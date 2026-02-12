@@ -3,109 +3,218 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
-    <title>📡 GroupChat · STUN/TURN · image + ack sync (mobile‑fixed)</title>
-    <!-- PeerJS for signaling & multi-peer -->
+    <title>📱 GroupChat · DOC + SCREEN · mobile WhatsApp style</title>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
-        /* your existing CSS – unchanged – I keep it exactly as you had it */
+        /* ---------- 🎨 WhatsApp/Telegram inspired, big & finger-friendly ---------- */
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: radial-gradient(circle at 10% 30%, #d4e0ec, #b6c8d9); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 12px; }
-        .app { max-width: 1000px; width: 100%; background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-radius: 36px; box-shadow: 0 20px 40px rgba(0,20,40,0.25); padding: 24px 20px; border: 1px solid rgba(255,255,255,0.5); }
-        .header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-        h1 { font-size: 1.8rem; font-weight: 700; color: #0b2d4b; letter-spacing: -0.5px; display: flex; align-items: center; gap: 8px; }
-        .ice-badge { background: #1f4a6b; color: white; padding: 6px 16px; border-radius: 50px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
-        .username-panel { background: white; border-radius: 60px; padding: 10px 18px; margin-bottom: 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; border: 1px solid #b6d0e2; box-shadow: inset 0 1px 4px rgba(0,0,0,0.02); }
-        .username-panel label { font-weight: 600; color: #1f4973; font-size: 0.95rem; }
-        #usernameInput { flex: 1; min-width: 180px; padding: 12px 18px; border: 1.5px solid #c9daea; border-radius: 50px; font-size: 1rem; background: #f9fcff; outline: none; transition: 0.2s; }
-        #usernameInput:focus { border-color: #2a6c9e; box-shadow: 0 0 0 3px rgba(42,108,158,0.15); }
-        .section { background: rgba(255,255,255,0.5); border-radius: 28px; padding: 22px 18px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.7); }
-        .flex-row { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
-        .btn { background: #1e3f5f; border: none; color: white; padding: 12px 24px; border-radius: 50px; font-weight: 600; font-size: 0.95rem; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: 0.2s; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 6px 12px rgba(0,30,60,0.1); flex: 0 0 auto; }
-        .btn:hover { background: #2d5b7c; transform: scale(0.97); }
-        .btn:disabled { opacity: 0.45; pointer-events: none; }
-        .btn-outline { background: transparent; border: 2px solid #1e3f5f; color: #1e3f5f; box-shadow: none; }
-        .link-box { background: #e2ebf3; padding: 14px 18px; border-radius: 40px; word-break: break-all; font-size: 0.9rem; border: 1px solid #a0bedb; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-top: 12px; }
-        .chat-container { background: #f2f7fd; border-radius: 28px; padding: 18px; margin-top: 8px; border: 1px solid #ccdcec; }
-        .messages { background: white; border-radius: 24px; padding: 18px; height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; border: 1px solid #d6e2ec; }
-        .message { background: #f0f6fc; padding: 12px 18px; border-radius: 22px; max-width: 90%; word-break: break-word; align-self: flex-start; border: 1px solid #dbe2ea; font-size: 0.95rem; line-height: 1.4; }
-        .message.self { background: #1e3b5a; color: white; align-self: flex-end; border: none; }
-        .message.system { background: transparent; color: #3c627c; align-self: center; font-size: 0.8rem; border: 1px dashed #8da9c2; max-width: 95%; }
-        .message img { max-width: 180px; max-height: 180px; border-radius: 16px; display: block; margin-top: 6px; border: 1px solid #ccc; }
-        .input-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-        #messageInput { flex: 1; min-width: 180px; padding: 14px 20px; border: 2px solid #c6d9e8; border-radius: 50px; font-size: 1rem; background: white; outline: none; }
-        #messageInput:focus { border-color: #2b6990; }
-        .file-label { background: #edf4fa; padding: 12px 18px; border-radius: 50px; font-size: 1.1rem; border: 1px solid #acc3d9; cursor: pointer; color: #1e3f5f; display: inline-flex; align-items: center; gap: 6px; }
-        #imageUpload { display: none; }
-        .status-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-top: 12px; font-size: 0.8rem; color: #1e4e6c; background: rgba(255,255,255,0.7); padding: 10px 18px; border-radius: 50px; }
-        .dot { width: 10px; height: 10px; border-radius: 50%; background: #9eb7c9; display: inline-block; margin-right: 6px; }
-        .dot.active { background: #28a745; box-shadow: 0 0 12px #28a745; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #0b1c26; background: radial-gradient(circle at 20% 30%, #1e3a4e, #0e1e26);
+            min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 8px;
+        }
+        .app {
+            max-width: 1100px; width: 100%; background: #0e1e26; backdrop-filter: blur(30px);
+            border-radius: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); padding: 20px 16px;
+            border: 1px solid rgba(80,140,180,0.3);
+        }
+        /* header / top */
+        .header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+        h1 { font-size: 1.9rem; font-weight: 700; color: #e6f7ff; letter-spacing: -0.5px; display: flex; align-items: center; gap: 6px; text-shadow: 0 2px 5px #00000020; }
+        .ice-badge { background: #1f5e80; color: white; padding: 6px 18px; border-radius: 40px; font-size: 0.8rem; font-weight: 600; border: 1px solid #7ab3c9; }
+
+        /* ---------- username – always visible, larger ---------- */
+        .username-panel {
+            background: #142e3a; border-radius: 60px; padding: 12px 20px; margin-bottom: 20px;
+            display: flex; flex-wrap: wrap; align-items: center; gap: 12px; border: 1px solid #2e6b7c;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.2);
+        }
+        .username-panel label { font-weight: 700; color: #cae9ff; font-size: 1.1rem; letter-spacing: 0.5px; }
+        #usernameInput {
+            flex: 1; min-width: 200px; padding: 14px 22px; border: none; border-radius: 50px;
+            font-size: 1.1rem; background: #1d3e4c; color: white; outline: none; transition: 0.2s;
+            border: 1.5px solid transparent;
+        }
+        #usernameInput:focus { border-color: #4ab0d0; background: #15323d; }
+        #usernameInput::placeholder { color: #a0c6d0; }
+
+        /* ---------- pre‑chat (room generate) ---------- */
+        .section { background: #112e38cc; backdrop-filter: blur(8px); border-radius: 36px; padding: 24px 20px; margin-bottom: 20px; border: 1px solid #3c798b; }
+        .flex-row { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+        .btn {
+            background: #256579; border: none; color: white; padding: 14px 28px; border-radius: 60px;
+            font-weight: 700; font-size: 1.1rem; display: inline-flex; align-items: center; justify-content: center;
+            gap: 10px; cursor: pointer; transition: 0.2s; border: 1px solid #80d0e0; box-shadow: 0 8px 16px #00000040;
+            flex: 0 0 auto; letter-spacing: 0.5px;
+        }
+        .btn:hover { background: #34879c; transform: scale(0.97); }
+        .btn:disabled { opacity: 0.4; pointer-events: none; }
+        .btn-outline { background: transparent; border: 2px solid #5ac8e0; color: #e2f0ff; box-shadow: none; }
+
+        .link-box { background: #0d303b; padding: 16px 22px; border-radius: 60px; word-break: break-all; font-size: 1rem; border: 1px solid #4f9db2; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-top: 16px; color: #dbf2ff; }
+        #customSessionId { flex:1; padding: 16px 24px; border-radius: 60px; border: none; background: #1b4957; color: white; font-size: 1.1rem; border: 1px solid #30809b; }
+        #customSessionId::placeholder { color: #addee9; }
+
+        /* ---------- CHAT interface – big bubbles, comfortable ---------- */
+        .chat-container {
+            background: #0a232b; border-radius: 36px; padding: 20px; margin-top: 8px;
+            border: 1px solid #2d7488; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
+        }
+        .messages {
+            background: #0b1c22; border-radius: 28px; padding: 22px 16px; height: 360px;
+            overflow-y: auto; display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px;
+            border: 1px solid #275f6b; box-shadow: inset 0 6px 12px #00000030;
+        }
+        /* ————— message bubbles ————— */
+        .message {
+            background: #1e424b; padding: 14px 20px; border-radius: 24px 24px 24px 8px;
+            max-width: 85%; word-break: break-word; align-self: flex-start;
+            border: 1px solid #4895a8; color: #f0fafc; font-size: 1.05rem; line-height: 1.45;
+            box-shadow: 0 2px 6px #00000030;
+        }
+        .message.self {
+            background: #1f5d6b; color: white; align-self: flex-end; border-radius: 24px 24px 8px 24px;
+            border: 1px solid #83d1e0;
+        }
+        .message.system {
+            background: transparent; color: #b7e1ed; align-self: center; font-size: 0.95rem;
+            border: 1px dashed #519faf; max-width: 98%; backdrop-filter: blur(4px);
+        }
+        /* file attachments – nice card */
+        .file-attachment {
+            background: #0f313a; border-radius: 18px; padding: 12px 16px; margin-top: 8px;
+            display: flex; align-items: center; gap: 14px; border: 1px solid #5ba9b9;
+        }
+        .file-icon { font-size: 2.2rem; }
+        .file-info { display: flex; flex-direction: column; }
+        .file-name { font-weight: 700; color: #daf0ff; font-size: 1rem; }
+        .file-size { color: #aad3df; font-size: 0.85rem; }
+        .download-link { background: #1d6b7c; padding: 8px 18px; border-radius: 40px; color: white; text-decoration: none; font-weight: 600; margin-left: auto; }
+        .message img { max-width: 200px; max-height: 200px; border-radius: 20px; display: block; margin-top: 8px; border: 2px solid #519faf; }
+
+        /* ————— input row – sticky, big ————— */
+        .input-row {
+            display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: #0b2c35;
+            padding: 12px 18px; border-radius: 80px; border: 1px solid #328296;
+        }
+        #messageInput {
+            flex: 1; min-width: 200px; padding: 16px 22px; border: none; border-radius: 60px;
+            font-size: 1.1rem; background: #163f49; color: white; outline: none;
+            border: 1.5px solid transparent; transition: 0.2s;
+        }
+        #messageInput:focus { border-color: #71d0e3; background: #10333b; }
+        #messageInput::placeholder { color: #b8e5ee; }
+
+        .file-label, .screen-share-btn {
+            background: #1b5768; padding: 14px 20px; border-radius: 50px; font-size: 1.5rem;
+            border: 1px solid #86d6e6; cursor: pointer; color: white; display: inline-flex;
+            align-items: center; gap: 8px; transition: 0.2s; box-shadow: 0 4px 8px #00000040;
+        }
+        .file-label:hover, .screen-share-btn:hover { background: #2c7e91; }
+        #sendBtn { background: #136b7c; padding: 16px 28px; font-size: 1.2rem; }
+
+        /* ————— screen share preview ————— */
+        .screen-video-container {
+            background: #001116; border-radius: 28px; padding: 16px; margin-bottom: 16px;
+            border: 2px solid #00c8ff; display: none; flex-wrap: wrap; align-items: center; gap: 16px;
+        }
+        .screen-video-container video { width: 100%; max-height: 260px; border-radius: 24px; border: 2px solid #3fa5b5; background: black; }
+        .stop-share-btn { background: #c24343; padding: 12px 24px; border-radius: 50px; font-weight: bold; border: none; color: white; font-size: 1rem; }
+
+        /* ————— status bar ————— */
+        .status-bar { display: flex; flex-wrap: wrap; justify-content: space-between; margin-top: 16px; font-size: 0.9rem; color: #d2f0fc; background: #0b2a33; padding: 12px 22px; border-radius: 60px; border: 1px solid #3f94a3; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; background: #708e96; display: inline-block; margin-right: 8px; }
+        .dot.active { background: #3ae03a; box-shadow: 0 0 18px #26e626; }
+        .peer-count { background: #1f5766; color: white; padding: 6px 20px; border-radius: 50px; font-size: 0.9rem; }
+
         .hidden { display: none !important; }
-        .peer-count { background: #1f3f5f; color: white; padding: 4px 14px; border-radius: 50px; font-size: 0.75rem; }
-        @media (max-width: 600px) { .app { padding: 16px; } h1 { font-size: 1.5rem; } .btn { padding: 10px 18px; } }
+        #roomLinkDisplay { font-size: 0.85rem; background: #13333d; padding: 8px 18px; border-radius: 50px; color: #d0ecf5; }
+
+        @media (max-width: 600px) {
+            .app { padding: 16px 12px; } h1 { font-size: 1.7rem; }
+            .message { font-size: 1.1rem; padding: 16px 22px; }
+            .btn, .file-label, .screen-share-btn { padding: 14px 22px; }
+        }
     </style>
 </head>
 <body>
     <div class="app" id="app">
 
-        <!-- HEADER with STUN/TURN info -->
+        <!-- header -->
         <div class="header">
-            <h1>👥 ShareChat <span style="font-size: 0.8rem; background: #cde1f0; padding: 4px 12px; border-radius: 40px; color: #0d3a5a;">ack sync</span></h1>
-            <span class="ice-badge">⚡ TURN‑boosted for mobile</span>
+            <h1>💬 Share<span style="color:#b3ecff;">Chat</span> <span style="font-size:0.9rem; background:#1f6270; padding:6px 18px; border-radius:40px;">DOC+SCREEN</span></h1>
+            <span class="ice-badge">📱 mobile TURN</span>
         </div>
 
-        <!-- GLOBAL USERNAME (always visible) -->
+        <!-- GLOBAL USERNAME (big) -->
         <div class="username-panel">
             <label>👤 Name</label>
             <input type="text" id="usernameInput" placeholder="Your nickname" value="Guest" autocomplete="off">
         </div>
 
-        <!-- ========== PRE-CHAT: SESSION CREATION (only if no session in URL) ========= -->
+        <!-- ========== PRE‑CHAT: SESSION (only if no session in URL) ========= -->
         <div id="preChatSection">
             <div id="generatorView" class="section">
-                <div style="margin-bottom: 16px; font-weight: 600; color: #1f4973;">🚀 Start new room</div>
+                <div style="margin-bottom: 16px; font-weight: 700; color: #c3ecff; font-size:1.2rem;">🚀 New room</div>
                 <div class="flex-row">
-                    <input type="text" id="customSessionId" class="flex-row" placeholder="room name (optional)" style="flex:1; padding: 14px 20px; border-radius: 60px; border: 1.5px solid #b8d0df; background: white; font-size:1rem;">
+                    <input type="text" id="customSessionId" placeholder="room name (optional)">
                     <button id="generateBtn" class="btn">🔗 Generate link</button>
                 </div>
-                <!-- generated link + host -->
                 <div id="linkOutput" style="display: none;" class="link-box">
-                    <span id="shareableLink" style="font-weight: 500; word-break: break-all;"></span>
-                    <button id="copyLinkBtn" style="background: transparent; border: none; font-size: 1.4rem; cursor: pointer; padding: 6px;" title="copy">📋</button>
+                    <span id="shareableLink" style="font-weight: 500;"></span>
+                    <button id="copyLinkBtn" style="background: transparent; border: none; font-size: 1.8rem; cursor: pointer; color:white;">📋</button>
                 </div>
-                <div style="margin-top: 20px;">
-                    <button id="hostChatBtn" class="btn" style="background: #225a7a; padding: 14px 32px;">🎤 Host this room</button>
-                    <span style="margin-left: 12px; color: #326480; font-size: 0.9rem;">(you'll be the hub)</span>
+                <div style="margin-top: 24px;">
+                    <button id="hostChatBtn" class="btn" style="background: #1c7c8c; padding: 16px 36px;">🎤 Host this room</button>
+                    <span style="margin-left: 12px; color: #b0e4f0; font-size:1rem;">(you become hub)</span>
                 </div>
             </div>
         </div>
 
-        <!-- ========== CHAT INTERFACE (hidden until host/client starts) ========= -->
+        <!-- ========== CHAT INTERFACE ========== -->
         <div id="chatInterface" class="hidden">
-            <!-- room info: session link always shown for host & clients -->
-            <div id="sessionLinkContainer" style="background: #e4edf5; border-radius: 40px; padding: 12px 20px; margin-bottom: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
-                <span style="font-weight: 600;">🔗 room:</span>
-                <span id="roomLinkDisplay" style="word-break: break-all; font-size: 0.8rem; background: white; padding: 6px 16px; border-radius: 50px;"></span>
-                <button id="copyRoomLinkBtn" style="background: white; border: 1px solid #5f8da0; padding: 6px 16px; border-radius: 40px; font-size: 0.8rem;">📋 copy</button>
+            <!-- room link -->
+            <div id="sessionLinkContainer" style="background: #0d3640; border-radius: 60px; padding: 14px 22px; margin-bottom: 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
+                <span style="font-weight: 700; color:#c5f0ff;">🔗 room:</span>
+                <span id="roomLinkDisplay" style="word-break: break-all;"></span>
+                <button id="copyRoomLinkBtn" style="background: #1f6575; border: none; padding: 8px 22px; border-radius: 50px; color:white; font-weight:600;">📋 copy</button>
             </div>
 
             <!-- chat area -->
             <div class="chat-container">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                    <span id="roomNameBadge" style="background: #cedce8; padding: 6px 18px; border-radius: 50px; font-size: 0.8rem;">📌 session: <span id="currentSessionSpan">-</span></span>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <span id="roomNameBadge" style="background: #1e4f5c; padding: 8px 24px; border-radius: 60px; font-size:0.95rem; color:#ecfeff;">📌 <span id="currentSessionSpan">-</span></span>
                     <span id="connectionStatus" class="peer-count">⚙️ connecting</span>
                 </div>
+
+                <!-- 🖥️ SCREEN SHARE VIDEO CONTAINER (visible only when sharing) -->
+                <div id="screenVideoContainer" class="screen-video-container">
+                    <video id="remoteScreenVideo" autoplay playsinline style="max-width:100%;"></video>
+                    <div style="display:flex; gap:16px; align-items:center;">
+                        <span style="color:white; font-weight:700;">🖥️ SCREEN SHARE</span>
+                        <button id="stopScreenShareBtn" class="stop-share-btn" style="display:none;">⏹️ Stop sharing</button>
+                    </div>
+                </div>
+
                 <!-- Messages log -->
                 <div class="messages" id="messageLog">
-                    <div class="message system">🟢 Welcome. Set your name above and start chatting.</div>
+                    <div class="message system">🟢 Welcome. Set your name & start chatting. Host can share screen.</div>
                 </div>
-                <!-- Input + image -->
+
+                <!-- Input row: MESSAGE + DOCUMENT (any file) + SCREEN SHARE (host only) + SEND -->
                 <div class="input-row">
                     <input type="text" id="messageInput" placeholder="Type a message..." autocomplete="off" disabled>
+                    <!-- 📎 DOCUMENT SHARE (replaces old image-only) -->
+                    <label for="documentUpload" class="file-label" id="docLabel" title="Share any document">📎</label>
+                    <input type="file" id="documentUpload" accept="*/*" style="display:none;">
+
+                    <!-- 🖥️ SCREEN SHARE BUTTON (visible only for host) -->
+                    <button id="screenShareBtn" class="screen-share-btn" title="Share screen (laptop)" style="display:none;">🖥️</button>
+
                     <button id="sendBtn" class="btn" disabled>📤</button>
-                    <label for="imageUpload" class="file-label" id="imageLabel">🖼️</label>
-                    <input type="file" id="imageUpload" accept="image/*" capture="environment">
                 </div>
-                <!-- Status line with ice & peer count -->
+
+                <!-- status line -->
                 <div class="status-bar">
                     <span><span class="dot" id="stateDot"></span> ICE: <span id="iceState">new</span></span>
                     <span><span id="peerCountDisplay">👥 0</span></span>
@@ -113,9 +222,8 @@
             </div>
         </div>
 
-        <!-- footer -->
-        <div style="text-align: center; margin-top: 20px; color: #3f617c; font-size: 0.75rem;">
-            ⚡ Public STUN/TURN (mobile‑optimized) · PeerJS signaling · messages auto-synced to new members
+        <div style="text-align: center; margin-top: 24px; color: #a8d8e6; font-size: 0.8rem;">
+            ⚡ STUN+TURN · any file share · screen share (host) · mobile oversized UI
         </div>
     </div>
 
@@ -123,75 +231,39 @@
         (function(){
             "use strict";
 
-            // ---------- 🌍 RELIABLE ICE SERVERS (mobile friendly) ----------
+            // ---------- 🌍 ICE SERVERS (mobile friendly, TURN boosted) ----------
             const ICE_CONFIG = {
                 iceServers: [
-                    // Google STUN – always good
                     { urls: 'stun:stun.l.google.com:19302' },
-                  //  { urls: 'stun:stun1.l.google.com:19302' },
-                  //  { urls: 'stun:stun2.l.google.com:19302' },
-                  //  { urls: 'stun:stun3.l.google.com:19302' },
-                  // { urls: 'stun:stun4.l.google.com:19302' },
-
-                    // openrelayproject – both UDP and TCP
-                    {
-                        urls: 'turn:openrelayproject.org:3478',
-                        username: 'openrelayproject',
-                        credential: 'openrelayproject'
-                    },
-                   //  {
-                   //      urls: 'turn:openrelayproject.org:3478?transport=tcp',
-                   //      username: 'openrelayproject',
-                   //      credential: 'openrelayproject'
-                   //  },
-				   // 
-                   //  // numb.viagenie.ca (still active, public test account)
-                   //  {
-                   //      urls: 'turn:numb.viagenie.ca:3478',
-                   //      username: 'letmein',
-                   //      credential: 'letmein'
-                   //  },
-                   //  {
-                   //      urls: 'turn:numb.viagenie.ca:3478?transport=tcp',
-                   //      username: 'letmein',
-                   //      credential: 'letmein'
-                   //  },
-
-                    // fallback TURN over TCP/443 (often allowed on cellular)
-                    {
-                        urls: 'turn:turn.anyfirewall.com:443?transport=tcp',
-                        username: 'webrtc',
-                        credential: 'webrtc'
-                    }
-                ],
-                // Optional: force TURN if direct connection fails (uncomment if needed)
-                // iceTransportPolicy: 'relay'
+                    { urls: 'turn:openrelayproject.org:3478', username: 'openrelayproject', credential: 'openrelayproject' },
+                    { urls: 'turn:turn.anyfirewall.com:443?transport=tcp', username: 'webrtc', credential: 'webrtc' }
+                ]
             };
 
             // ---------- GLOBAL STATE ----------
-            let sessionId = null;
-            let isHost = false;
-            let myPeerId = null;
-            let myUsername = 'Guest';
-
+            let sessionId = null, isHost = false, myPeerId = null, myUsername = 'Guest';
             let peer = null;
-            let hostConnections = new Map();
-            let clientConn = null;
+            let hostConnections = new Map();   // host -> connected clients
+            let clientConn = null;            // client -> host connection
 
+            // Message store + dedup
             let messageStore = [];
             let receivedMsgIds = new Set();
+            let hostMessageMap = new Map();   // for ack tracking (host)
 
-            let hostMessageMap = new Map();
+            // ---------- SCREEN SHARE (HOST ONLY) ----------
+            let screenShareStream = null;
+            let screenShareCalls = [];        // store all media connections (as caller)
+            let isSharingScreen = false;
 
             // UI elements
-            const generatorView = document.getElementById('generatorView');
             const preChatSection = document.getElementById('preChatSection');
             const chatInterface = document.getElementById('chatInterface');
             const usernameInput = document.getElementById('usernameInput');
             const messageLog = document.getElementById('messageLog');
             const messageInput = document.getElementById('messageInput');
             const sendBtn = document.getElementById('sendBtn');
-            const imageUpload = document.getElementById('imageUpload');
+            const documentUpload = document.getElementById('documentUpload'); // renamed from imageUpload
             const sessionLinkContainer = document.getElementById('sessionLinkContainer');
             const roomLinkDisplay = document.getElementById('roomLinkDisplay');
             const copyRoomLinkBtn = document.getElementById('copyRoomLinkBtn');
@@ -200,23 +272,17 @@
             const iceState = document.getElementById('iceState');
             const stateDot = document.getElementById('stateDot');
             const peerCountDisplay = document.getElementById('peerCountDisplay');
+            const screenShareBtn = document.getElementById('screenShareBtn');
+            const screenVideoContainer = document.getElementById('screenVideoContainer');
+            const remoteScreenVideo = document.getElementById('remoteScreenVideo');
+            const stopScreenShareBtn = document.getElementById('stopScreenShareBtn');
 
-            // ---------- Helper functions ----------
-            function generateUUID() {
-                return Date.now() + '-' + Math.random().toString(36).substring(2, 10);
-            }
+            // ---------- helper ----------
+            function generateUUID() { return Date.now() + '-' + Math.random().toString(36).substring(2,10); }
+            function getUrlParam(p) { return new URLSearchParams(window.location.search).get(p); }
+            function buildSessionUrl(s) { const url = new URL(window.location.href); url.searchParams.set('session', s); return url.toString(); }
 
-            function getUrlParam(param) {
-                const urlParams = new URLSearchParams(window.location.search);
-                return urlParams.get(param);
-            }
-
-            function buildSessionUrl(session) {
-                const url = new URL(window.location.href);
-                url.searchParams.set('session', session);
-                return url.toString();
-            }
-
+            // ---------- DISPLAY MESSAGE (now with FILE support) ----------
             function displayMessage(msg, isSelf = false) {
                 const msgDiv = document.createElement('div');
                 msgDiv.className = 'message' + (isSelf ? ' self' : '');
@@ -226,8 +292,27 @@
                 if (isSelf) senderDisplay = 'You';
 
                 let contentHtml = '';
-                if (msg.type === 'image') {
-                    contentHtml = `<strong>${senderDisplay}:</strong><br><img src="${msg.content}" alt="shared image" style="max-width:180px;">`;
+                if (msg.type === 'file' || msg.type === 'image') {  // support both old image and new file
+                    if (msg.fileInfo) {  // new document format
+                        const file = msg.fileInfo;
+                        const isImage = file.type.startsWith('image/');
+                        if (isImage) {
+                            contentHtml = `<strong>${senderDisplay}:</strong><br><img src="${msg.content}" alt="image" style="max-width:200px; border-radius:16px;">`;
+                        } else {
+                            // generic file attachment card
+                            contentHtml = `<strong>${senderDisplay}:</strong> 
+                                <div class="file-attachment">
+                                    <span class="file-icon">📄</span>
+                                    <div class="file-info">
+                                        <span class="file-name">${file.name || 'document'}</span>
+                                        <span class="file-size">${file.size ? (file.size/1024).toFixed(1)+' KB' : ''}</span>
+                                    </div>
+                                    <a href="${msg.content}" download="${file.name}" class="download-link">⬇️ Download</a>
+                                </div>`;
+                        }
+                    } else {  // legacy image (just in case)
+                        contentHtml = `<strong>${senderDisplay}:</strong><br><img src="${msg.content}" style="max-width:180px;">`;
+                    }
                 } else {
                     contentHtml = `<strong>${senderDisplay}:</strong> ${msg.content}`;
                 }
@@ -245,225 +330,76 @@
                 return true;
             }
 
-            function updatePeerCountUI() {
-                if (isHost) {
-                    peerCountDisplay.innerText = `👥 ${hostConnections.size + 1}`;
-                } else {
-                    peerCountDisplay.innerText = `👥 2+`;
-                }
-            }
-
-            // ---------- HOST SPECIFIC ----------
-            function hostSendMessageToAll(data, excludePeerId = null) {
-                hostConnections.forEach((conn, peerId) => {
-                    if (peerId !== excludePeerId && conn.open) {
-                        conn.send(data);
-                    }
-                });
-            }
-
-            function hostProcessNewMessage(senderPeerId, senderName, type, content, providedMsgId = null) {
-                if (!myPeerId) {
-                    console.warn('hostProcessNewMessage: myPeerId not ready');
-                    appendSystemMessage('⚠️ Cannot send: host not fully initialized');
-                    return;
-                }
+            // ---------- HOST: process new message (chat/file) ----------
+            function hostProcessNewMessage(senderPeerId, senderName, type, content, fileInfo = null, providedMsgId = null) {
+                if (!myPeerId) return;
                 const msgId = providedMsgId || generateUUID();
-                const timestamp = Date.now();
                 const msg = {
-                    id: msgId,
-                    senderId: senderPeerId,
-                    senderName: senderName || 'unknown',
-                    type: type,
-                    content: content,
-                    timestamp: timestamp
+                    id: msgId, senderId: senderPeerId, senderName: senderName || 'unknown',
+                    type: type, content: content, timestamp: Date.now()
                 };
-                const ackSet = new Set();
-                ackSet.add(senderPeerId);
-                ackSet.add(myPeerId);
+                if (fileInfo) msg.fileInfo = fileInfo;  // attach file metadata
+
+                const ackSet = new Set([senderPeerId, myPeerId]);
                 hostMessageMap.set(msgId, { msg, acks: ackSet });
 
-                if (senderPeerId !== myPeerId) {
-                    addMessageToStore(msg, false);
-                } else {
-                    addMessageToStore(msg, true);
-                }
-
+                addMessageToStore(msg, senderPeerId === myPeerId);
                 const broadcastMsg = { type: 'broadcast', msg: msg };
                 hostSendMessageToAll(broadcastMsg, senderPeerId);
             }
 
-            function hostSendHistory(conn, targetPeerId) {
-                const allMessages = Array.from(hostMessageMap.values()).map(item => item.msg);
-                if (allMessages.length === 0) return;
-                const historyPacket = { type: 'history', messages: allMessages };
-                conn.send(historyPacket);
+            function hostSendMessageToAll(data, excludePeerId = null) {
+                hostConnections.forEach((conn, pid) => { if (pid !== excludePeerId && conn.open) conn.send(data); });
             }
 
-            function hostProcessAck(peerId, msgId) {
-                if (hostMessageMap.has(msgId)) {
-                    const entry = hostMessageMap.get(msgId);
-                    entry.acks.add(peerId);
+            // ---------- HOST: screen share ----------
+            async function startScreenShare() {
+                if (!isHost || !peer) return;
+                try {
+                    screenShareStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+                    isSharingScreen = true;
+                    screenVideoContainer.style.display = 'flex';
+                    remoteScreenVideo.srcObject = screenShareStream;
+                    stopScreenShareBtn.style.display = 'inline-block';
+
+                    // call all currently connected clients
+                    hostConnections.forEach((conn, clientPeerId) => {
+                        const call = peer.call(clientPeerId, screenShareStream);
+                        screenShareCalls.push(call);
+                        call.on('close', () => console.log('screen call closed'));
+                    });
+
+                    // when new client connects, host will call them (handled in host connection logic)
+                } catch (err) {
+                    console.error('Screen share error:', err);
+                    appendSystemMessage('❌ Screen share failed: ' + err.message);
                 }
             }
 
-            function hostRemovePeer(peerId) {
-                hostConnections.delete(peerId);
-                hostMessageMap.forEach((entry, msgId) => {
-                    entry.acks.delete(peerId);
-                });
-                updatePeerCountUI();
-            }
-
-            // ---------- CLIENT & HOST ICE STATE MONITOR (crucial for mobile!) ----------
-            function monitorIceState(peerInstance, uiIceElement, uiDotElement) {
-                if (!peerInstance) return;
-                peerInstance.on('iceconnectionstatechange', () => {
-                    const state = peerInstance.iceConnectionState || 'new';
-                    uiIceElement.innerText = state;
-                    if (state === 'connected' || state === 'completed') {
-                        uiDotElement.className = 'dot active';
-                    } else {
-                        uiDotElement.className = 'dot';
-                    }
-                    // helpful for debugging
-                    console.log('ICE state:', state);
-                });
-            }
-
-            // ---------- INIT & URL DETECTION ----------
-            function initFromUrl() {
-                const urlSession = getUrlParam('session');
-                if (urlSession) {
-                    sessionId = urlSession;
-                    preChatSection.classList.add('hidden');
-                    chatInterface.classList.remove('hidden');
-                    currentSessionSpan.innerText = sessionId;
-                    const fullLink = buildSessionUrl(sessionId);
-                    roomLinkDisplay.innerText = fullLink;
-                    const defaultName = 'Guest_' + Math.random().toString(36).substring(2, 6);
-                    usernameInput.value = defaultName;
-                    myUsername = defaultName;
-                    autoJoinClient();
-                } else {
-                    preChatSection.classList.remove('hidden');
-                    chatInterface.classList.add('hidden');
+            function stopScreenShare() {
+                if (screenShareStream) {
+                    screenShareStream.getTracks().forEach(t => t.stop());
+                    screenShareStream = null;
                 }
-            }
-
-            // AUTO CLIENT JOIN (with ICE monitoring & timeout)
-            function autoJoinClient() {
-                isHost = false;
-                connectionStatus.innerText = '🟡 connecting...';
-                peer = new Peer({
-                    config: ICE_CONFIG,
-                    debug: 1
-                });
-
-                // 👉 client ICE state monitoring
-                monitorIceState(peer, iceState, stateDot);
-
-                peer.on('open', (id) => {
-                    myPeerId = id;
-                    connectionStatus.innerText = '✅ connected, joining room';
-                    const conn = peer.connect(sessionId, { reliable: true });
-                    clientConn = conn;
-                    setupClientConnection(conn);
-                });
-
-                peer.on('error', (err) => {
-                    connectionStatus.innerText = '❌ error';
-                    appendSystemMessage('Peer error: ' + err.type + ' - ' + (err.message || ''));
-                    console.error('Peer error:', err);
-                });
-            }
-
-            function setupClientConnection(conn) {
-                // timeout: if connection not opened in 15 sec, show warning
-                const connTimeout = setTimeout(() => {
-                    if (!conn.open) {
-                        appendSystemMessage('⏳ Connection is taking longer than expected – ICE state: ' + iceState.innerText);
-                    }
-                }, 15000);
-
-                conn.on('open', () => {
-                    clearTimeout(connTimeout);
-                    connectionStatus.innerText = '🟢 connected';
-                    iceState.innerText = 'open';   // fallback – real ICE state is shown via monitor
-                    stateDot.className = 'dot active';
-                    enableChat(true);
-                    conn.send({ type: 'setUsername', username: myUsername, peerId: myPeerId });
-                    appendSystemMessage('Joined room as ' + myUsername);
-                });
-
-                conn.on('data', (data) => {
-                    handleClientData(data);
-                });
-
-                conn.on('close', () => {
-                    connectionStatus.innerText = '⚫ disconnected';
-                    enableChat(false);
-                });
-
-                conn.on('error', (err) => {
-                    console.error('DataConnection error:', err);
-                    appendSystemMessage('Connection error: ' + (err.message || err.type || 'unknown'));
-                });
-            }
-
-            function handleClientData(data) {
-                if (!data || !data.type) return;
-                switch (data.type) {
-                    case 'broadcast':
-                        if (data.msg) {
-                            const isSelf = (data.msg.senderId === myPeerId);
-                            if (addMessageToStore(data.msg, isSelf)) {
-                                if (clientConn && clientConn.open) {
-                                    clientConn.send({ type: 'ack', msgId: data.msg.id });
-                                }
-                            }
-                        }
-                        break;
-                    case 'history':
-                        if (data.messages && Array.isArray(data.messages)) {
-                            data.messages.forEach(msg => {
-                                if (!receivedMsgIds.has(msg.id)) {
-                                    addMessageToStore(msg, msg.senderId === myPeerId);
-                                    if (clientConn && clientConn.open) {
-                                        clientConn.send({ type: 'ack', msgId: msg.id });
-                                    }
-                                }
-                            });
-                            appendSystemMessage(`📦 history loaded (${data.messages.length} messages)`);
-                        }
-                        break;
-                    case 'delete':
-                        // auto-delete disabled – ignore
-                        break;
-                    default: break;
-                }
+                screenShareCalls.forEach(call => call.close());
+                screenShareCalls = [];
+                isSharingScreen = false;
+                screenVideoContainer.style.display = 'none';
+                stopScreenShareBtn.style.display = 'none';
+                remoteScreenVideo.srcObject = null;
             }
 
             // ---------- HOST SETUP ----------
             function hostSession() {
-                if (!sessionId) {
-                    alert('Generate a session link first');
-                    return;
-                }
+                if (!sessionId) { alert('Generate a link first'); return; }
                 isHost = true;
                 myUsername = usernameInput.value.trim() || 'Host';
                 preChatSection.classList.add('hidden');
                 chatInterface.classList.remove('hidden');
                 currentSessionSpan.innerText = sessionId;
-                const fullLink = buildSessionUrl(sessionId);
-                roomLinkDisplay.innerText = fullLink;
+                roomLinkDisplay.innerText = buildSessionUrl(sessionId);
 
-                peer = new Peer(sessionId, {
-                    config: ICE_CONFIG,
-                    debug: 1
-                });
-
-                // 👉 host ICE state monitoring
+                peer = new Peer(sessionId, { config: ICE_CONFIG, debug: 1 });
                 monitorIceState(peer, iceState, stateDot);
 
                 peer.on('open', (id) => {
@@ -471,7 +407,8 @@
                     connectionStatus.innerText = '🎤 Hosting';
                     iceState.innerText = 'listening';
                     enableChat(true);
-                    appendSystemMessage('Host ready. Share link and wait for peers.');
+                    appendSystemMessage('Host ready. Share link. You can share screen (🖥️).');
+                    screenShareBtn.style.display = 'inline-flex'; // only host sees it
                 });
 
                 peer.on('connection', (conn) => {
@@ -480,139 +417,190 @@
                     updatePeerCountUI();
                     appendSystemMessage(`➕ peer joined: ${remotePeerId.substring(0,6)}...`);
 
-                    // ICE state might already be updated via monitor, but we set a visual hint
-                    iceState.innerText = 'connected';
-                    stateDot.className = 'dot active';
+                    // if host is already sharing screen, call this new client
+                    if (isSharingScreen && screenShareStream) {
+                        const call = peer.call(remotePeerId, screenShareStream);
+                        screenShareCalls.push(call);
+                    }
 
-                    conn.on('data', (data) => {
-                        handleHostData(remotePeerId, data);
-                    });
+                    conn.on('data', (data) => handleHostData(remotePeerId, data));
                     conn.on('close', () => {
                         hostRemovePeer(remotePeerId);
                         appendSystemMessage(`➖ peer left: ${remotePeerId.substring(0,6)}...`);
-                        if (hostConnections.size === 0) {
-                            iceState.innerText = 'listening';
-                            stateDot.className = 'dot';
-                        }
                     });
-                    conn.on('error', (err) => {
-                        console.error('Host connection error:', err);
-                        appendSystemMessage(`Peer connection error: ${err.message || err.type}`);
-                    });
+                    conn.on('error', (err) => console.error('Host conn error:', err));
+                    hostSendHistory(conn);
+                });
 
-                    hostSendHistory(conn, remotePeerId);
+                peer.on('call', (call) => {
+                    // Host is only caller for screen share, but if someone else tries to call, answer? We don't support client share – just ignore/answer with no stream.
+                    call.answer(); 
+                    call.on('stream', (remoteStream) => {
+                        // if client somehow sends stream, but we don't use.
+                    });
                 });
 
                 peer.on('error', (err) => {
-                    if (err.type === 'unavailable-id') {
-                        alert('❌ This room name is already in use. Please generate a different one.');
-                    } else {
-                        appendSystemMessage('Host error: ' + err.type + ' - ' + (err.message || ''));
-                    }
-                    console.error('Peer host error:', err);
+                    if (err.type === 'unavailable-id') alert('❌ Room name taken. Use another.');
+                    else appendSystemMessage('Host error: ' + err.type);
+                    console.error(err);
                 });
             }
 
-            function handleHostData(peerId, data) {
-                if (!data.type) return;
+            // ---------- CLIENT AUTO JOIN ----------
+            function autoJoinClient() {
+                isHost = false;
+                connectionStatus.innerText = '🟡 connecting...';
+                peer = new Peer({ config: ICE_CONFIG, debug: 1 });
+                monitorIceState(peer, iceState, stateDot);
+
+                peer.on('open', (id) => {
+                    myPeerId = id;
+                    connectionStatus.innerText = '✅ connected, joining';
+                    const conn = peer.connect(sessionId, { reliable: true });
+                    clientConn = conn;
+                    setupClientConnection(conn);
+                });
+
+                peer.on('call', (call) => {
+                    // client receives screen share call from host
+                    call.answer(); // no local stream
+                    call.on('stream', (remoteStream) => {
+                        screenVideoContainer.style.display = 'flex';
+                        remoteScreenVideo.srcObject = remoteStream;
+                        stopScreenShareBtn.style.display = 'none'; // only host stops
+                        appendSystemMessage('🖥️ Host is sharing screen');
+                    });
+                    call.on('close', () => {
+                        screenVideoContainer.style.display = 'none';
+                        remoteScreenVideo.srcObject = null;
+                        appendSystemMessage('🖥️ Screen share ended');
+                    });
+                });
+
+                peer.on('error', (err) => {
+                    connectionStatus.innerText = '❌ error';
+                    appendSystemMessage('Peer error: ' + err.message);
+                });
+            }
+
+            function setupClientConnection(conn) {
+                const timeout = setTimeout(() => {
+                    if (!conn.open) appendSystemMessage('⏳ Connection slow – ICE: ' + iceState.innerText);
+                }, 15000);
+                conn.on('open', () => {
+                    clearTimeout(timeout);
+                    connectionStatus.innerText = '🟢 connected';
+                    iceState.innerText = 'open';
+                    stateDot.className = 'dot active';
+                    enableChat(true);
+                    conn.send({ type: 'setUsername', username: myUsername, peerId: myPeerId });
+                    appendSystemMessage('Joined as ' + myUsername);
+                });
+                conn.on('data', handleClientData);
+                conn.on('close', () => { connectionStatus.innerText = '⚫ disconnected'; enableChat(false); });
+                conn.on('error', (e) => console.error(e));
+            }
+
+            function handleClientData(data) {
+                if (!data || !data.type) return;
                 switch (data.type) {
-                    case 'setUsername':
-                        // store mapping if needed (optional)
-                        break;
-                    case 'chat':
-                        hostProcessNewMessage(peerId, data.senderName || 'Peer', 'chat', data.content, data.msgId);
-                        break;
-                    case 'image':
-                        hostProcessNewMessage(peerId, data.senderName || 'Peer', 'image', data.content, data.msgId);
-                        break;
-                    case 'ack':
-                        if (data.msgId) hostProcessAck(peerId, data.msgId);
-                        break;
+                    case 'broadcast':
+                        if (data.msg && addMessageToStore(data.msg, data.msg.senderId === myPeerId)) {
+                            if (clientConn?.open) clientConn.send({ type: 'ack', msgId: data.msg.id });
+                        } break;
+                    case 'history':
+                        if (data.messages) {
+                            data.messages.forEach(msg => {
+                                if (!receivedMsgIds.has(msg.id)) {
+                                    addMessageToStore(msg, msg.senderId === myPeerId);
+                                    if (clientConn?.open) clientConn.send({ type: 'ack', msgId: msg.id });
+                                }
+                            });
+                            appendSystemMessage(`📦 loaded ${data.messages.length} messages`);
+                        } break;
                 }
             }
 
-            // ---------- SEND MESSAGE (client or host) ----------
+            function handleHostData(peerId, data) {
+                switch (data.type) {
+                    case 'chat': hostProcessNewMessage(peerId, data.senderName, 'chat', data.content, null, data.msgId); break;
+                    case 'image': // fallback for legacy
+                    case 'file': 
+                        hostProcessNewMessage(peerId, data.senderName, 'file', data.content, data.fileInfo, data.msgId); 
+                        break;
+                    case 'ack': if (data.msgId) hostProcessAck(peerId, data.msgId); break;
+                }
+            }
+
+            function hostProcessAck(peerId, msgId) { if (hostMessageMap.has(msgId)) hostMessageMap.get(msgId).acks.add(peerId); }
+            function hostRemovePeer(pid) { hostConnections.delete(pid); hostMessageMap.forEach(e => e.acks.delete(pid)); updatePeerCountUI(); }
+            function hostSendHistory(conn) { 
+                const all = Array.from(hostMessageMap.values()).map(e => e.msg);
+                if (all.length) conn.send({ type: 'history', messages: all });
+            }
+
+            // ---------- SEND FILE (instead of image) ----------
+            function sendFile(file, base64Data) {
+                const senderName = usernameInput.value.trim() || 'Anonymous';
+                const msgId = generateUUID();
+                const fileInfo = {
+                    name: file.name,
+                    size: file.size,
+                    type: file.type || 'application/octet-stream'
+                };
+                if (isHost) {
+                    hostProcessNewMessage(myPeerId, senderName, 'file', base64Data, fileInfo, msgId);
+                } else {
+                    if (clientConn?.open) {
+                        clientConn.send({
+                            type: 'file',
+                            content: base64Data,
+                            senderName: senderName,
+                            fileInfo: fileInfo,
+                            msgId: msgId
+                        });
+                        // local echo
+                        const tempMsg = { id: msgId, senderId: myPeerId, senderName, type: 'file', content: base64Data, fileInfo, timestamp: Date.now() };
+                        addMessageToStore(tempMsg, true);
+                    }
+                }
+            }
+
             function sendChatMessage(text) {
                 if (!text.trim()) return;
-                if (isHost && !myPeerId) {
-                    appendSystemMessage('⚠️ Host not ready yet, please wait...');
-                    return;
-                }
                 const senderName = usernameInput.value.trim() || 'Anonymous';
                 const msgId = generateUUID();
                 if (isHost) {
-                    hostProcessNewMessage(myPeerId, senderName, 'chat', text, msgId);
+                    hostProcessNewMessage(myPeerId, senderName, 'chat', text, null, msgId);
                 } else {
-                    if (clientConn && clientConn.open) {
-                        clientConn.send({
-                            type: 'chat',
-                            content: text,
-                            senderName: senderName,
-                            msgId: msgId
-                        });
-                        const tempMsg = {
-                            id: msgId,
-                            senderId: myPeerId,
-                            senderName: senderName,
-                            type: 'chat',
-                            content: text,
-                            timestamp: Date.now()
-                        };
+                    if (clientConn?.open) {
+                        clientConn.send({ type: 'chat', content: text, senderName, msgId });
+                        const tempMsg = { id: msgId, senderId: myPeerId, senderName, type: 'chat', content: text, timestamp: Date.now() };
                         addMessageToStore(tempMsg, true);
                     }
                 }
             }
 
-            function sendImage(base64Data) {
-                const senderName = usernameInput.value.trim() || 'Anonymous';
-                const msgId = generateUUID();
-                if (isHost) {
-                    if (!myPeerId) {
-                        appendSystemMessage('⚠️ Host not ready yet, please wait...');
-                        return;
-                    }
-                    hostProcessNewMessage(myPeerId, senderName, 'image', base64Data, msgId);
-                } else {
-                    if (clientConn && clientConn.open) {
-                        clientConn.send({
-                            type: 'image',
-                            content: base64Data,
-                            senderName: senderName,
-                            msgId: msgId
-                        });
-                        const tempMsg = {
-                            id: msgId,
-                            senderId: myPeerId,
-                            senderName: senderName,
-                            type: 'image',
-                            content: base64Data,
-                            timestamp: Date.now()
-                        };
-                        addMessageToStore(tempMsg, true);
-                    }
-                }
-            }
-
-            // ---------- UI helpers ----------
+            // ---------- UI ----------
             function enableChat(enable) {
-                messageInput.disabled = !enable;
-                sendBtn.disabled = !enable;
-                imageUpload.disabled = !enable;
+                messageInput.disabled = !enable; sendBtn.disabled = !enable; documentUpload.disabled = !enable;
                 if (enable) messageInput.focus();
             }
-
             function appendSystemMessage(text) {
-                const sysDiv = document.createElement('div');
-                sysDiv.className = 'message system';
-                sysDiv.innerText = '🔹 ' + text;
-                messageLog.appendChild(sysDiv);
-                messageLog.scrollTop = messageLog.scrollHeight;
+                const d = document.createElement('div'); d.className = 'message system'; d.innerText = '🔹 ' + text;
+                messageLog.appendChild(d); messageLog.scrollTop = messageLog.scrollHeight;
             }
+            function monitorIceState(p, iceEl, dotEl) {
+                p.on('iceconnectionstatechange', () => {
+                    const s = p.iceConnectionState || 'new'; iceEl.innerText = s;
+                    dotEl.className = s === 'connected' || s === 'completed' ? 'dot active' : 'dot';
+                });
+            }
+            function updatePeerCountUI() { if (isHost) peerCountDisplay.innerText = `👥 ${hostConnections.size + 1}`; }
 
             // ---------- EVENT LISTENERS ----------
-            usernameInput.addEventListener('change', function(e) {
-                myUsername = e.target.value.trim() || 'Guest';
-            });
+            usernameInput.addEventListener('change', e => myUsername = e.target.value.trim() || 'Guest');
 
             document.getElementById('generateBtn').addEventListener('click', function() {
                 let custom = document.getElementById('customSessionId').value.trim();
@@ -624,48 +612,47 @@
                 currentSessionSpan.innerText = finalId;
                 roomLinkDisplay.innerText = link;
             });
-
-            document.getElementById('copyLinkBtn').addEventListener('click', function() {
-                const link = document.getElementById('shareableLink').innerText;
-                navigator.clipboard.writeText(link).then(() => alert('Link copied')).catch(() => alert('Press Ctrl+C'));
-            });
-
+            document.getElementById('copyLinkBtn').addEventListener('click', () => navigator.clipboard.writeText(document.getElementById('shareableLink').innerText).then(() => alert('Copied')));
             document.getElementById('hostChatBtn').addEventListener('click', hostSession);
+            copyRoomLinkBtn.addEventListener('click', () => navigator.clipboard.writeText(roomLinkDisplay.innerText).then(() => alert('Room link copied')));
 
-            copyRoomLinkBtn.addEventListener('click', function() {
-                navigator.clipboard.writeText(roomLinkDisplay.innerText).then(() => alert('Room link copied')).catch(() => alert('Copy manually'));
-            });
-
-            sendBtn.addEventListener('click', function() {
-                sendChatMessage(messageInput.value);
-                messageInput.value = '';
-            });
-
-            messageInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter' && !sendBtn.disabled) {
-                    sendChatMessage(messageInput.value);
-                    messageInput.value = '';
-                }
-            });
-
-            imageUpload.addEventListener('change', function(e) {
+            // 📎 DOCUMENT SHARE (replaces image)
+            documentUpload.addEventListener('change', function(e) {
                 const file = e.target.files[0];
                 if (!file) return;
                 const reader = new FileReader();
-                reader.onload = function(ev) {
-                    const base64 = ev.target.result;
-                    sendImage(base64);
-                    imageUpload.value = '';
-                };
+                reader.onload = (ev) => { sendFile(file, ev.target.result); documentUpload.value = ''; };
                 reader.readAsDataURL(file);
             });
 
-            // Start
-            initFromUrl();
+            // screen share button (host only)
+            screenShareBtn.addEventListener('click', function() {
+                if (isHost && !isSharingScreen) startScreenShare();
+            });
+            stopScreenShareBtn.addEventListener('click', function() { stopScreenShare(); });
 
-            setInterval(() => {
-                if (isHost) updatePeerCountUI();
-            }, 1000);
+            sendBtn.addEventListener('click', () => { sendChatMessage(messageInput.value); messageInput.value = ''; });
+            messageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !sendBtn.disabled) { sendChatMessage(messageInput.value); messageInput.value = ''; } });
+
+            // URL init
+            function initFromUrl() {
+                const urlSession = getUrlParam('session');
+                if (urlSession) {
+                    sessionId = urlSession;
+                    preChatSection.classList.add('hidden');
+                    chatInterface.classList.remove('hidden');
+                    currentSessionSpan.innerText = sessionId;
+                    roomLinkDisplay.innerText = buildSessionUrl(sessionId);
+                    usernameInput.value = 'Guest_' + Math.random().toString(36).substring(2,6);
+                    myUsername = usernameInput.value;
+                    autoJoinClient();
+                } else {
+                    preChatSection.classList.remove('hidden');
+                    chatInterface.classList.add('hidden');
+                }
+            }
+            initFromUrl();
+            setInterval(() => { if (isHost) updatePeerCountUI(); }, 1000);
         })();
     </script>
 </body>
