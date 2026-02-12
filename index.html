@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
-    <title>📡 GroupChat · Auto‑ICE (infinite retry) · Client share FIXED</title>
+    <title>📡 GroupChat · Auto‑ICE (long timeout) · Mobile fixed</title>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         /* ---------- 🎨 WhatsApp/Telegram inspired, big & finger-friendly ---------- */
@@ -157,8 +157,8 @@
     <div class="app" id="app">
         <!-- header -->
         <div class="header">
-            <h1>💬 Share<span style="color:#b3ecff;">Chat</span> <span style="font-size:0.9rem; background:#1f6270; padding:6px 18px; border-radius:40px;">Forever‑Retry</span></h1>
-            <span class="ice-badge">📱 Infinite ICE</span>
+            <h1>💬 Share<span style="color:#b3ecff;">Chat</span> <span style="font-size:0.9rem; background:#1f6270; padding:6px 18px; border-radius:40px;">Mobile‑Fix</span></h1>
+            <span class="ice-badge">📱 ICE long‑timeout</span>
         </div>
 
         <!-- GLOBAL USERNAME -->
@@ -167,7 +167,7 @@
             <input type="text" id="usernameInput" placeholder="Your nickname" value="Guest" autocomplete="off">
         </div>
 
-        <!-- ========== 🌍 ICE SERVER PROFILES – infinite auto‑retry ========= -->
+        <!-- ========== 🌍 ICE SERVER PROFILES – infinite auto‑retry (gentle timeouts) ========= -->
         <div class="ice-selector-panel">
             <label>🔄 ICE profile:</label>
             <select id="iceProfileSelect"></select>
@@ -221,7 +221,7 @@
 
                 <!-- Messages log -->
                 <div class="messages" id="messageLog">
-                    <div class="message system">🟢 Welcome. Client will retry ICE profiles forever until connected.</div>
+                    <div class="message system">🟢 Welcome. Client will retry ICE with extended timeouts (30s+).</div>
                 </div>
 
                 <!-- Input row -->
@@ -242,7 +242,7 @@
         </div>
 
         <div style="text-align: center; margin-top: 24px; color: #a8d8e6; font-size: 0.8rem;">
-            ⚡ Infinite ICE fallback · Client retries until connection is fully open · Chat activates only on success
+            ⚡ Extended ICE timeouts (30-40s) · Host sends history only after connection opens
         </div>
     </div>
 
@@ -274,7 +274,7 @@
             let isViewingScreen = false;            // whether I am currently viewing a screen
             let screenShareCalls = [];              // if I am sharer, array of active MediaConnections to viewers
 
-            // ---------- INFINITE RETRY STATE (client only) ----------
+            // ---------- INFINITE RETRY STATE (client only) – LONGER TIMEOUTS ----------
             let isConnecting = false;               // true while attempting connection
             let currentProfileIndex = 0;            // current profile index
             let connectionAttemptTimeout = null;    // main connection timeout
@@ -376,7 +376,7 @@
                 return true;
             }
 
-            // ---------- INFINITE RETRY ENGINE (client only) ----------
+            // ---------- INFINITE RETRY ENGINE (client only) – EXTENDED TIMEOUTS ----------
             function startClientConnection() {
                 if (isHost) return;
                 // Start from the selected profile or first one
@@ -387,15 +387,23 @@
 
             function attemptConnection() {
                 if (isHost) return;
+                // Prevent overlapping attempts
+                if (isConnecting && peer) {
+                    console.warn('attemptConnection called while already connecting, cleaning up');
+                    if (peer) peer.destroy();
+                    peer = null;
+                    clientConn = null;
+                }
                 // Clear any pending timeouts
                 clearTimeouts();
+
                 // Get current profile
                 if (currentProfileIndex >= SERVER_PROFILES.length) {
                     currentProfileIndex = 0; // wrap around
                 }
                 const profile = SERVER_PROFILES[currentProfileIndex];
                 retryCount++;
-                
+
                 // Update UI
                 isConnecting = true;
                 manualRetry = false;
@@ -403,27 +411,27 @@
                 currentIceProfile.innerText = `⏳ ${profile.name}`;
                 iceState.innerText = 'new';
                 stateDot.className = 'dot';
-                
+
                 // Clean up old peer
                 if (peer) {
                     peer.destroy();
                     peer = null;
                 }
                 clientConn = null;
-                
+
                 // Create new Peer with this profile
                 peer = new Peer({ config: profile.config, debug: 1 });
-                
-                // Monitor ICE state with timeout (if it stays 'new' too long, retry)
+
+                // Monitor ICE state with longer timeout (mobile needs more time)
                 let iceLeftNew = false;
                 iceNewTimeout = setTimeout(() => {
                     if (isConnecting && !iceLeftNew && !manualRetry) {
                         console.warn(`ICE stuck in 'new' for profile ${currentProfileIndex}, retrying next...`);
-                        appendSystemMessage(`⏳ ICE stuck in 'new' – switching profile`);
+                        appendSystemMessage(`⏳ ICE stuck in 'new' (20s) – switching profile`);
                         moveToNextProfileAndRetry();
                     }
-                }, 10000); // 10 seconds max in 'new'
-                
+                }, 20000); // Increased from 10s to 20s
+
                 peer.on('iceconnectionstatechange', () => {
                     const state = peer.iceConnectionState || 'new';
                     iceState.innerText = state;
@@ -434,17 +442,15 @@
                     } else {
                         stateDot.className = 'dot';
                     }
-                    if (state === 'failed' || state === 'disconnected' || state === 'closed') {
-                        if (isConnecting && !manualRetry) {
-                            console.warn(`ICE state ${state}, retrying...`);
-                            moveToNextProfileAndRetry();
-                        }
+                    if ((state === 'failed' || state === 'disconnected' || state === 'closed') && isConnecting && !manualRetry) {
+                        console.warn(`ICE state ${state}, retrying...`);
+                        moveToNextProfileAndRetry();
                     }
                 });
-                
+
                 // Handle incoming calls (screen share)
                 peer.on('call', handleIncomingScreenShareCall);
-                
+
                 peer.on('open', (id) => {
                     if (!isConnecting) return;
                     myPeerId = id;
@@ -454,7 +460,7 @@
                     clientConn = conn;
                     setupClientConnection(conn);
                 });
-                
+
                 peer.on('error', (err) => {
                     console.error('Peer error:', err);
                     if (isConnecting && !manualRetry) {
@@ -462,15 +468,15 @@
                         moveToNextProfileAndRetry();
                     }
                 });
-                
-                // Overall connection timeout (if data connection never opens)
+
+                // Overall connection timeout – INCREASED to 40s (mobile)
                 connectionAttemptTimeout = setTimeout(() => {
                     if (isConnecting && !manualRetry) {
-                        console.warn('Connection attempt timed out');
+                        console.warn('Connection attempt timed out (40s)');
                         appendSystemMessage(`⏳ Connection timeout – trying next profile...`);
                         moveToNextProfileAndRetry();
                     }
-                }, 20000); // 20 seconds total
+                }, 40000); // Increased from 20s to 40s
             }
 
             function moveToNextProfileAndRetry() {
@@ -485,7 +491,7 @@
                     if (!manualRetry && isConnecting) {
                         attemptConnection();
                     }
-                }, 500);
+                }, 600);
             }
 
             function clearTimeouts() {
@@ -495,31 +501,31 @@
                 iceNewTimeout = null;
             }
 
-            // ---------- Setup client data connection ----------
+            // ---------- Setup client data connection (with longer data open timeout) ----------
             function setupClientConnection(conn) {
                 const connOpenTimeout = setTimeout(() => {
                     if (!conn.open && isConnecting && !manualRetry) {
-                        appendSystemMessage('⏳ Data connection not opening – retrying...');
+                        appendSystemMessage('⏳ Data connection not opening (30s) – retrying...');
                         moveToNextProfileAndRetry();
                     }
-                }, 15000);
+                }, 30000); // Increased from 15s to 30s
 
                 conn.on('open', () => {
                     clearTimeout(connOpenTimeout);
                     clearTimeouts(); // success, clear all retry timers
                     if (!isConnecting) return;
-                    
+
                     isConnecting = false; // connected!
                     connectionStatus.innerText = '🟢 connected';
                     iceState.innerText = 'connected';
                     stateDot.className = 'dot active';
                     // Show success profile
                     currentIceProfile.innerText = `✅ connected: ${SERVER_PROFILES[currentProfileIndex].name}`;
-                    
+
                     // Enable chat
                     enableChat(true);
                     screenShareBtn.style.display = 'inline-flex';
-                    
+
                     // Send username
                     conn.send({ type: 'setUsername', username: myUsername, peerId: myPeerId });
                     appendSystemMessage('✅ Joined room as ' + myUsername);
@@ -573,7 +579,7 @@
                         });
                         call.on('error', (err) => console.error('Viewer call error:', err));
                     } catch (err) {
-                        console.error('Failed to answer call with dummy audio:', err);
+                        console.warn('Failed to answer with dummy audio, using empty stream', err);
                         call.answer(); // fallback
                     }
                 }
@@ -589,7 +595,7 @@
                     oscillator.stop();
                     return stream;
                 } catch (e) {
-                    console.warn('Could not create dummy audio, using empty stream', e);
+                    console.warn('Could not create dummy audio, returning empty stream', e);
                     return new MediaStream();
                 }
             }
@@ -733,7 +739,7 @@
                 }
             }
 
-            // ---------- HOST SETUP ----------
+            // ---------- HOST SETUP (FIXED: send history only after connection open) ----------
             function hostSession() {
                 if (!sessionId) { alert('Generate a link first'); return; }
                 isHost = true;
@@ -766,7 +772,13 @@
                     hostConnections.set(remotePeerId, conn);
                     updatePeerCountUI();
                     appendSystemMessage(`➕ peer joined: ${remotePeerId.substring(0,6)}...`);
-                    hostNotifyNewPeerToSharer(remotePeerId);
+
+                    // FIX: Send history only AFTER the connection is open
+                    conn.on('open', () => {
+                        hostSendHistory(conn);
+                        hostNotifyNewPeerToSharer(remotePeerId);
+                    });
+
                     conn.on('data', (data) => handleHostData(remotePeerId, data));
                     conn.on('close', () => {
                         hostRemovePeer(remotePeerId);
@@ -776,7 +788,6 @@
                         }
                     });
                     conn.on('error', (e) => console.error(e));
-                    hostSendHistory(conn);
                 });
 
                 peer.on('error', (err) => {
@@ -827,7 +838,9 @@
             function hostRemovePeer(pid) { hostConnections.delete(pid); hostMessageMap.forEach(e => e.acks.delete(pid)); updatePeerCountUI(); }
             function hostSendHistory(conn) { 
                 const all = Array.from(hostMessageMap.values()).map(e => e.msg);
-                if (all.length) conn.send({ type: 'history', messages: all });
+                if (all.length && conn.open) {
+                    conn.send({ type: 'history', messages: all });
+                }
             }
 
             // ---------- Client data handler ----------
@@ -1007,7 +1020,7 @@
                     roomLinkDisplay.innerText = buildSessionUrl(sessionId);
                     usernameInput.value = 'Guest_' + Math.random().toString(36).substring(2,6);
                     myUsername = usernameInput.value;
-                    startClientConnection(); // INFINITE RETRY STARTS HERE
+                    startClientConnection(); // INFINITE RETRY STARTS HERE (with long timeouts)
                 } else {
                     preChatSection.classList.remove('hidden');
                     chatInterface.classList.add('hidden');
