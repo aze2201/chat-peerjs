@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
-    <title>📡 GroupChat · ICE retry · WhatsApp style · Ack cleanup</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes, viewport-fit=cover">
+    <title>📡 GroupChat · Smooth screen + audio · Quality control</title>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         /* ---------- 🎨 WhatsApp/Telegram inspired, clean & finger-friendly ---------- */
@@ -18,11 +18,10 @@
             border-radius: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); padding: 20px 16px;
             border: 1px solid rgba(80,140,180,0.3);
         }
-        /* header only title */
         .header { margin-bottom: 16px; }
         h1 { font-size: 1.9rem; font-weight: 700; color: #e6f7ff; display: flex; align-items: center; gap: 6px; }
 
-        /* --- username panel (always editable) --- */
+        /* --- username panel --- */
         .username-panel {
             background: #142e3a; border-radius: 60px; padding: 12px 20px; margin-bottom: 20px;
             display: flex; flex-wrap: wrap; align-items: center; gap: 12px; border: 1px solid #2e6b7c;
@@ -35,7 +34,7 @@
         }
         #usernameInput:focus { border-color: #4ab0d0; background: #15323d; }
 
-        /* --- pre‑chat: only room generation (no ICE) --- */
+        /* --- pre‑chat: only room generation --- */
         .section { background: #112e38cc; backdrop-filter: blur(8px); border-radius: 36px; padding: 24px 20px; margin-bottom: 20px; border: 1px solid #3c798b; }
         .flex-row { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
         .btn {
@@ -49,7 +48,7 @@
         .link-box { background: #0d303b; padding: 16px 22px; border-radius: 60px; word-break: break-all; font-size: 1rem; border: 1px solid #4f9db2; display: flex; align-items: center; justify-content: space-between; margin-top: 16px; color: #dbf2ff; }
         #customSessionId { flex:1; padding: 16px 24px; border-radius: 60px; border: none; background: #1b4957; color: white; font-size: 1.1rem; border: 1px solid #30809b; }
 
-        /* --- TOP BAR: name+status on LEFT, 3-dot on RIGHT (mobile friendly) --- */
+        /* --- TOP BAR: name+status on LEFT, 3-dot on RIGHT --- */
         .chat-top-bar {
             display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;
             background: #0f2e38; border-radius: 60px; padding: 8px 20px; border: 1px solid #358197;
@@ -88,6 +87,11 @@
         #retryManualBtnInfo {
             background: #2e7285; border: none; color: white; padding: 10px 24px; border-radius: 40px;
             font-weight: 600; cursor: pointer; margin-left: 8px;
+        }
+        /* Quality selector */
+        #qualitySelectInfo {
+            background: #1f5768; color: white; border: none; padding: 12px 24px; border-radius: 50px;
+            font-size: 0.95rem; border: 1px solid #6ac8e0; flex: 1; min-width: 180px;
         }
 
         /* --- CHAT MESSAGES – TALL like WhatsApp --- */
@@ -165,26 +169,29 @@
             background: #256579; padding: 12px 24px; border-radius: 50px; font-weight: 600;
             border: 1px solid #a0e3ff; cursor: pointer; color: white;
         }
+        .audio-hint {
+            background: #1b5768; color: white; padding: 8px 16px; border-radius: 40px;
+            font-size: 0.85rem; display: inline-block; margin-left: 8px;
+        }
 
         .hidden { display: none !important; }
-        /* hidden room span – only used internally */
         #currentSessionSpan { display: none; }
     </style>
 </head>
 <body>
     <div class="app">
-        <!-- header – only title -->
+        <!-- header -->
         <div class="header">
             <h1>💬 Share<span style="color:#b3ecff;">Chat</span></h1>
         </div>
 
-        <!-- always visible username edit -->
+        <!-- username edit -->
         <div class="username-panel">
             <label>👤 Name</label>
             <input type="text" id="usernameInput" placeholder="Your nickname" value="Guest" autocomplete="off">
         </div>
 
-        <!-- ========== PRE‑CHAT: only room generation ========= -->
+        <!-- ========== PRE‑CHAT: room generation ========= -->
         <div id="preChatSection">
             <div id="generatorView" class="section">
                 <div style="margin-bottom: 16px; font-weight: 700; color: #c3ecff; font-size:1.2rem;">🚀 New room</div>
@@ -204,7 +211,7 @@
 
         <!-- ========== CHAT INTERFACE ========= -->
         <div id="chatInterface" class="hidden">
-            <!-- WhatsApp style top bar: name+status LEFT, 3-dot RIGHT -->
+            <!-- top bar: name+status left, 3-dot right -->
             <div class="chat-top-bar">
                 <div class="left-status">
                     <span class="my-name-small" id="topBarUsername">Guest</span>
@@ -215,15 +222,16 @@
 
             <!-- SCREEN SHARE VIDEO CONTAINER -->
             <div id="screenVideoContainer" class="screen-video-container">
-                <video id="remoteScreenVideo" autoplay playsinline></video>
+                <video id="remoteScreenVideo" autoplay playsinline muted="false"></video>
                 <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
                     <span style="color:white; font-weight:700;" id="screenShareLabel">🖥️ SCREEN SHARE</span>
                     <button id="stopScreenShareBtn" class="stop-share-btn" style="display:none;">⏹️ Stop sharing</button>
                     <button id="fullscreenBtn" class="fullscreen-btn" style="display:none;">⛶ Fullscreen</button>
+                    <span id="audioHint" class="audio-hint" style="display:none;">🔊 Tap video for audio</span>
                 </div>
             </div>
 
-            <!-- ℹ️ INFO PANEL — everything extra -->
+            <!-- ℹ️ INFO PANEL — all extra settings + QUALITY CONTROL -->
             <div id="infoPanel" class="info-panel">
                 <div class="info-row">
                     <span class="info-label">🔗 Room link</span>
@@ -251,15 +259,24 @@
                     <span class="info-label">📶 ICE state</span>
                     <span id="iceStateInfo">new</span>
                 </div>
+                <!-- 🎚️ QUALITY SELECTOR (client controlled) -->
+                <div class="info-row">
+                    <span class="info-label">🎮 Video quality</span>
+                    <select id="qualitySelectInfo">
+                        <option value="low">Low (480p, 10fps, 300kbps)</option>
+                        <option value="medium" selected>Medium (720p, 15fps, 500kbps)</option>
+                        <option value="high">High (1080p, 30fps, 1mbps)</option>
+                    </select>
+                </div>
             </div>
 
             <!-- CHAT MESSAGES – TALL -->
             <div class="chat-container">
                 <div class="messages" id="messageLog">
-                    <div class="message system">🟢 Connected. Infinite ICE retry (3s sleep).</div>
+                    <div class="message system">🟢 Connected. Tap video to hear audio on mobile. Adjust quality in Info.</div>
                 </div>
 
-                <!-- Input row: long text + plus menu -->
+                <!-- Input row: text + plus menu -->
                 <div class="input-row">
                     <input type="text" id="messageInput" placeholder="Type a message..." autocomplete="off" disabled>
                     <input type="file" id="documentUpload" accept="*/*" style="display:none;">
@@ -273,8 +290,8 @@
                 </div>
             </div>
         </div>
-        <!-- no footer message -->
-        <span id="currentSessionSpan" style="display:none;"></span> <!-- hidden, used for storing room name -->
+        <!-- hidden room id storage -->
+        <span id="currentSessionSpan" style="display:none;"></span>
     </div>
 
     <script>
@@ -292,6 +309,22 @@
                 { name: "7. Google STUN + AnyFirewall", config: { iceServers: [ { urls: 'stun:stun.l.google.com:19302' }, { urls: 'turn:turn.anyfirewall.com:443?transport=tcp', username: 'webrtc', credential: 'webrtc' } ] } },
                 { name: "8. Full combo", config: { iceServers: [ { urls: 'stun:stun.l.google.com:19302' }, { urls: 'turn:openrelayproject.org:3478', username: 'openrelayproject', credential: 'openrelayproject' }, { urls: 'turn:turn.anyfirewall.com:443?transport=tcp', username: 'webrtc', credential: 'webrtc' } ] } }
             ];
+
+            // ---------- QUALITY PRESETS ----------
+            const QUALITY_PRESETS = {
+                low: {
+                    video: { width: { ideal: 854, max: 854 }, height: { ideal: 480, max: 480 }, frameRate: { ideal: 10, max: 15 } },
+                    bitrate: 300000
+                },
+                medium: {
+                    video: { width: { ideal: 1280, max: 1280 }, height: { ideal: 720, max: 720 }, frameRate: { ideal: 15, max: 30 } },
+                    bitrate: 500000
+                },
+                high: {
+                    video: { width: { ideal: 1920, max: 1920 }, height: { ideal: 1080, max: 1080 }, frameRate: { ideal: 30, max: 30 } },
+                    bitrate: 1000000
+                }
+            };
 
             // ---------- GLOBAL STATE ----------
             let sessionId = null, isHost = false, myPeerId = null, myUsername = 'Guest';
@@ -311,11 +344,11 @@
             let connectionAttemptTimeout = null, iceNewTimeout = null;
             let retryCount = 0, manualRetry = false;
 
-            // ---------- MESSAGE STORAGE & ACKNOWLEDGMENT (HOST) ----------
+            // Message storage & ack (host)
             let messageStore = [];
             let receivedMsgIds = new Set();
             let hostMessageMap = new Map();        // msgId -> { msg, acks: Set<peerId> }
-            let clientAcks = new Map();            // peerId -> Set<msgId> (persistent)
+            let clientAcks = new Map();            // peerId -> Set<msgId>
 
             // ---------- UI ELEMENTS ----------
             const preChatSection = document.getElementById('preChatSection');
@@ -324,11 +357,12 @@
             const messageLog = document.getElementById('messageLog');
             const messageInput = document.getElementById('messageInput');
             const documentUpload = document.getElementById('documentUpload');
-            const currentSessionSpan = document.getElementById('currentSessionSpan'); // hidden
+            const currentSessionSpan = document.getElementById('currentSessionSpan');
             const topBarUsername = document.getElementById('topBarUsername');
 
             const iceProfileSelectInfo = document.getElementById('iceProfileSelectInfo');
             const retryManualBtnInfo = document.getElementById('retryManualBtnInfo');
+            const qualitySelectInfo = document.getElementById('qualitySelectInfo');
 
             const infoToggleBtn = document.getElementById('infoToggleBtn');
             const infoPanel = document.getElementById('infoPanel');
@@ -346,11 +380,12 @@
             const stopScreenShareBtn = document.getElementById('stopScreenShareBtn');
             const screenShareLabel = document.getElementById('screenShareLabel');
             const fullscreenBtn = document.getElementById('fullscreenBtn');
+            const audioHint = document.getElementById('audioHint');
 
             const plusBtn = document.getElementById('plusBtn');
             const shareMenu = document.getElementById('shareMenu');
 
-            // ---------- POPULATE ICE DROPDOWN (info panel only) ----------
+            // ---------- POPULATE ICE DROPDOWN ----------
             function populateIceSelect() {
                 iceProfileSelectInfo.innerHTML = '';
                 SERVER_PROFILES.forEach((profile, idx) => {
@@ -413,7 +448,7 @@
                 return true;
             }
 
-            // ---------- INFINITE RETRY with 3s sleep (client only) ----------
+            // ---------- INFINITE RETRY (client) ----------
             function startClientConnection() {
                 if (isHost) return;
                 currentProfileIndex = parseInt(iceProfileSelectInfo.value, 10) || 0;
@@ -466,7 +501,6 @@
                     myPeerIdInfo.innerText = id;
                     topBarUsername.innerText = myUsername;
                     connectionAttemptTimeout = setTimeout(() => {
-                        // connection attempt overall timeout
                         if (isConnecting && !manualRetry) {
                             appendSystemMessage(`⏳ Connection timeout – retry`);
                             moveToNextProfileAndRetry();
@@ -541,7 +575,115 @@
                 });
             }
 
-            // ---------- INCOMING SCREEN SHARE ----------
+            // ---------- 🎮 QUALITY CONTROL ----------
+            // Apply video constraints and bitrate to a sender
+            async function applyQualityToSender(sender, quality) {
+                if (!sender) return;
+                const preset = QUALITY_PRESETS[quality] || QUALITY_PRESETS.medium;
+                // Apply video constraints if track exists
+                if (sender.track && sender.track.kind === 'video') {
+                    try {
+                        await sender.track.applyConstraints(preset.video);
+                    } catch (e) {
+                        console.warn('Could not apply video constraints', e);
+                    }
+                }
+                // Set bitrate
+                try {
+                    const params = sender.getParameters();
+                    if (!params.encodings) params.encodings = [{}];
+                    params.encodings[0].maxBitrate = preset.bitrate;
+                    await sender.setParameters(params);
+                } catch (e) {
+                    console.warn('Could not set bitrate', e);
+                }
+            }
+
+            // Apply quality to a specific call (for sharer)
+            function applyQualityToCall(call, quality) {
+                setTimeout(() => {
+                    try {
+                        const pc = call._pc;
+                        if (pc && pc.getSenders) {
+                            const videoSender = pc.getSenders().find(s => s.track?.kind === 'video');
+                            applyQualityToSender(videoSender, quality);
+                            const audioSender = pc.getSenders().find(s => s.track?.kind === 'audio');
+                            if (audioSender) {
+                                // Cap audio bitrate
+                                try {
+                                    const params = audioSender.getParameters();
+                                    if (!params.encodings) params.encodings = [{}];
+                                    params.encodings[0].maxBitrate = 64000;
+                                    audioSender.setParameters(params);
+                                } catch (e) {}
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Could not apply quality to call', e);
+                    }
+                }, 500); // delay to ensure PC is ready
+            }
+
+            // Apply quality to local stream (when I am the sharer)
+            async function applyQualityToLocalStream(quality) {
+                if (!localScreenShareStream) return;
+                const preset = QUALITY_PRESETS[quality] || QUALITY_PRESETS.medium;
+                const videoTrack = localScreenShareStream.getVideoTracks()[0];
+                if (videoTrack) {
+                    try {
+                        await videoTrack.applyConstraints(preset.video);
+                        appendSystemMessage(`🎮 Video quality set to ${quality} (local)`);
+                    } catch (e) {
+                        console.warn('Could not apply local constraints', e);
+                    }
+                }
+                // Also update bitrate on all existing calls
+                screenShareCalls.forEach(call => applyQualityToCall(call, quality));
+            }
+
+            // Request quality change (called when user selects new quality)
+            function requestQualityChange(quality) {
+                // If I am the sharer, apply directly
+                if (localScreenShareStream) {
+                    applyQualityToLocalStream(quality);
+                    return;
+                }
+                // Otherwise, send request to host (who will forward to sharer)
+                if (activeScreenSharperId && clientConn?.open) {
+                    clientConn.send({
+                        type: 'qualityRequest',
+                        sharerId: activeScreenSharperId,
+                        quality: quality
+                    });
+                    appendSystemMessage(`🎮 Requested ${quality} quality from sharer`);
+                } else {
+                    appendSystemMessage('⚠️ No active screen share to control');
+                }
+            }
+
+            // ---------- 🎧 MOBILE AUDIO FIX ----------
+            function enableAudioOnMobile(videoElement) {
+                // Show hint
+                audioHint.style.display = 'inline-block';
+                // Attach one-time click listener to video container
+                const container = screenVideoContainer;
+                const enableAudio = async () => {
+                    // Resume AudioContext if any
+                    if (window.audioContext && window.audioContext.state === 'suspended') {
+                        await window.audioContext.resume();
+                    }
+                    // Play video element (ensures audio starts)
+                    if (videoElement.paused) {
+                        videoElement.play().catch(e => console.warn('play failed', e));
+                    }
+                    // Remove hint and listener
+                    audioHint.style.display = 'none';
+                    container.removeEventListener('click', enableAudio);
+                };
+                container.addEventListener('click', enableAudio, { once: true });
+            }
+
+            // ---------- INCOMING SCREEN SHARE (viewer side) ----------
             function handleIncomingScreenShareCall(call) {
                 if (localScreenShareStream) {
                     call.answer(localScreenShareStream);
@@ -554,6 +696,8 @@
                         screenShareLabel.innerText = `🖥️ ${call.peer.substring(0,6)}'s screen`;
                         fullscreenBtn.style.display = 'inline-flex';
                         appendSystemMessage(`📺 Viewing screen from ${call.peer.substring(0,6)}`);
+                        // Mobile audio fix
+                        enableAudioOnMobile(remoteScreenVideo);
                     });
                     call.on('close', () => {
                         if (isViewingScreen) {
@@ -561,6 +705,7 @@
                             remoteScreenVideo.srcObject = null;
                             isViewingScreen = false;
                             fullscreenBtn.style.display = 'none';
+                            audioHint.style.display = 'none';
                         }
                     });
                 }
@@ -583,77 +728,55 @@
                 else if (isHost) hostBroadcastScreenShareStop();
             }
 
-            // ---------- START SCREEN SHARE ----------
-// ---------- START SCREEN SHARE – with smoothness optimizations ----------
-async function startScreenShare() {
-    if (!peer) return;
-    try {
-        if (localScreenShareStream) stopMyScreenShare(true);
-
-        // --- 1. Request screen with balanced quality/smoothness ---
-        const stream = await navigator.mediaDevices.getDisplayMedia({
-            video: {
-                width: { ideal: 1280, max: 1280 },   // max 720p
-                height: { ideal: 720, max: 720 },
-                frameRate: { ideal: 15, max: 30 },   // max 30 fps, ideal 15
-                // Optional: prefer a more efficient codec
-                // (modern browsers will adapt automatically)
-            },
-            audio: true
-        });
-
-        localScreenShareStream = stream;
-        stopScreenShareBtn.style.display = 'inline-block';
-        screenShareLabel.innerText = '🖥️ You are sharing';
-        screenVideoContainer.style.display = 'flex';
-        remoteScreenVideo.srcObject = stream;
-        fullscreenBtn.style.display = 'inline-flex';
-
-        // --- 2. Notify host / peers ---
-        if (isHost) {
-            hostHandleNewScreenShare(myPeerId);
-        } else if (clientConn?.open) {
-            clientConn.send({ type: 'screenShareStart', sharerPeerId: myPeerId });
-        }
-
-        // --- 3. After call creation, apply bandwidth limit ---
-        //    (this will be executed for every outgoing call)
-        window.applyBitrateLimit = function(call) {
-            setTimeout(() => { // give time for the peer connection to be established
+            // ---------- 🚀 START SCREEN SHARE – SMOOTH + AUDIO ----------
+            async function startScreenShare() {
+                if (!peer) return;
                 try {
-                    const pc = call._pc; // PeerJS internal – stable enough
-                    if (pc && pc.getSenders) {
-                        const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-                        if (sender) {
-                            const params = sender.getParameters();
-                            if (!params.encodings) params.encodings = [{}];
-                            // Set max bitrate to 500 kbps – adjust as needed
-                            params.encodings[0].maxBitrate = 500000;
-                            sender.setParameters(params).catch(e => console.warn('Bitrate limit failed:', e));
-                        }
+                    if (localScreenShareStream) stopMyScreenShare(true);
+
+                    // Default quality = medium
+                    const preset = QUALITY_PRESETS.medium;
+                    const stream = await navigator.mediaDevices.getDisplayMedia({
+                        video: preset.video,
+                        audio: true
+                    });
+
+                    localScreenShareStream = stream;
+                    stopScreenShareBtn.style.display = 'inline-block';
+                    screenShareLabel.innerText = '🖥️ You are sharing (audio)';
+                    screenVideoContainer.style.display = 'flex';
+                    remoteScreenVideo.srcObject = stream;
+                    fullscreenBtn.style.display = 'inline-flex';
+
+                    // Notify host / peers
+                    if (isHost) {
+                        hostHandleNewScreenShare(myPeerId);
+                    } else if (clientConn?.open) {
+                        clientConn.send({ type: 'screenShareStart', sharerPeerId: myPeerId });
                     }
-                } catch (e) {
-                    console.warn('Could not set bitrate limit', e);
+
+                    // Override peer.call to apply bitrate & quality to every new call
+                    const originalCall = peer.call;
+                    peer.call = function(peerId, stream, options) {
+                        const call = originalCall.call(this, peerId, stream, options);
+                        // Apply current quality preset
+                        const currentQuality = qualitySelectInfo.value;
+                        applyQualityToCall(call, currentQuality);
+                        screenShareCalls.push(call);
+                        call.on('close', () => {
+                            screenShareCalls = screenShareCalls.filter(c => c !== call);
+                        });
+                        return call;
+                    };
+
+                    // Apply to existing calls (if any)
+                    screenShareCalls.forEach(call => applyQualityToCall(call, qualitySelectInfo.value));
+
+                    stream.getVideoTracks()[0].onended = () => stopMyScreenShare();
+                } catch (err) {
+                    appendSystemMessage('❌ Screen share failed: ' + err.message);
                 }
-            }, 1000);
-        };
-
-        // --- 4. Override peer.call to apply the limit on every new call ---
-        const originalCall = peer.call;
-        peer.call = function(peerId, stream, options) {
-            const call = originalCall.call(this, peerId, stream, options);
-            applyBitrateLimit(call);
-            return call;
-        };
-
-        // --- 5. If this sharer is already making calls (e.g., host), re‑apply to existing calls ---
-        screenShareCalls.forEach(call => applyBitrateLimit(call));
-
-        stream.getVideoTracks()[0].onended = () => stopMyScreenShare();
-    } catch (err) {
-        appendSystemMessage('❌ Screen share failed: ' + err.message);
-    }
-}
+            }
 
             // ---------- HOST HANDLERS (screen share) ----------
             function hostHandleNewScreenShare(sharerPeerId) {
@@ -671,7 +794,7 @@ async function startScreenShare() {
                 }
                 const startMsg = { type: 'screenShareStart', sharerPeerId };
                 hostConnections.forEach((conn, pid) => { if (pid !== sharerPeerId && conn.open) conn.send(startMsg); });
-                if (sharerPeerId !== myPeerId) appendSystemMessage(`📺 ${sharerPeerId.substring(0,6)} started screen share`);
+                if (sharerPeerId !== myPeerId) appendSystemMessage(`📺 ${sharerPeerId.substring(0,6)} started screen share (audio)`);
             }
 
             function hostAsSharerCallViewers(viewerIds) {
@@ -699,7 +822,13 @@ async function startScreenShare() {
             function hostNotifyNewPeerToSharer(newPeerId) {
                 if (activeScreenSharperId) {
                     if (activeScreenSharperId === myPeerId) {
-                        if (localScreenShareStream) { try { peer.call(newPeerId, localScreenShareStream); } catch {} }
+                        if (localScreenShareStream) { 
+                            try { 
+                                const call = peer.call(newPeerId, localScreenShareStream);
+                                screenShareCalls.push(call);
+                                call.on('close', () => screenShareCalls = screenShareCalls.filter(c => c !== call));
+                            } catch {} 
+                        }
                     } else {
                         const sharerConn = hostConnections.get(activeScreenSharperId);
                         if (sharerConn?.open) sharerConn.send({ type: 'screenShareAddViewer', viewerId: newPeerId });
@@ -714,7 +843,7 @@ async function startScreenShare() {
                 myUsername = usernameInput.value.trim() || 'Host';
                 preChatSection.classList.add('hidden');
                 chatInterface.classList.remove('hidden');
-                currentSessionSpan.innerText = sessionId; // hidden store
+                currentSessionSpan.innerText = sessionId;
                 const fullLink = buildSessionUrl(sessionId);
                 roomLinkDisplayInfo.innerText = fullLink;
                 topBarUsername.innerText = myUsername;
@@ -760,7 +889,7 @@ async function startScreenShare() {
                 });
             }
 
-            // ---------- HOST: send only messages that client hasn't acked ----------
+            // ---------- HOST: filtered history ----------
             function hostSendFilteredHistory(conn, peerId) {
                 const clientAckSet = clientAcks.get(peerId) || new Set();
                 const messagesToSend = [];
@@ -792,8 +921,14 @@ async function startScreenShare() {
                     case 'screenShareStop': 
                         if (activeScreenSharperId === peerId) hostBroadcastScreenShareStop(); 
                         break;
-                    case 'setUsername':
-                        // update stored username for this peer (optional)
+                    case 'qualityRequest':
+                        // Forward quality request to sharer
+                        if (data.sharerId && data.quality) {
+                            const sharerConn = hostConnections.get(data.sharerId);
+                            if (sharerConn?.open) {
+                                sharerConn.send({ type: 'applyQuality', quality: data.quality });
+                            }
+                        }
                         break;
                 }
             }
@@ -878,6 +1013,7 @@ async function startScreenShare() {
                             remoteScreenVideo.srcObject = null;
                             isViewingScreen = false;
                             fullscreenBtn.style.display = 'none';
+                            audioHint.style.display = 'none';
                         }
                         break;
                     case 'screenShareInitiate':
@@ -887,13 +1023,26 @@ async function startScreenShare() {
                                     const call = peer.call(viewerId, localScreenShareStream);
                                     screenShareCalls.push(call);
                                     call.on('close', () => screenShareCalls = screenShareCalls.filter(c => c !== call));
+                                    // Apply current quality
+                                    applyQualityToCall(call, qualitySelectInfo.value);
                                 } catch (err) {}
                             });
                         }
                         break;
                     case 'screenShareAddViewer':
                         if (data.viewerId && localScreenShareStream) {
-                            try { peer.call(data.viewerId, localScreenShareStream); } catch (err) {}
+                            try { 
+                                const call = peer.call(data.viewerId, localScreenShareStream);
+                                screenShareCalls.push(call);
+                                call.on('close', () => screenShareCalls = screenShareCalls.filter(c => c !== call));
+                                applyQualityToCall(call, qualitySelectInfo.value);
+                            } catch (err) {}
+                        }
+                        break;
+                    case 'applyQuality':
+                        // Sharer receives this and applies new quality
+                        if (localScreenShareStream) {
+                            applyQualityToLocalStream(data.quality);
                         }
                         break;
                 }
@@ -952,9 +1101,24 @@ async function startScreenShare() {
                     peerCountDisplayInfo.innerText = '👤 1';
                 }
             }
+            // Universal fullscreen for mobile & desktop
             function toggleFullScreen() {
-                if (!document.fullscreenElement) remoteScreenVideo.requestFullscreen().catch(()=>{});
-                else document.exitFullscreen();
+                const video = remoteScreenVideo;
+                if (!document.fullscreenElement && !video.webkitDisplayingFullscreen) {
+                    if (video.requestFullscreen) {
+                        video.requestFullscreen();
+                    } else if (video.webkitEnterFullscreen) { // iOS Safari
+                        video.webkitEnterFullscreen();
+                    } else if (video.webkitRequestFullscreen) {
+                        video.webkitRequestFullscreen();
+                    }
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    } else if (video.webkitExitFullscreen) {
+                        video.webkitExitFullscreen();
+                    }
+                }
             }
 
             // ---------- EVENT LISTENERS ----------
@@ -1008,6 +1172,11 @@ async function startScreenShare() {
                     retryCount = 0;
                     attemptConnection();
                 }
+            });
+
+            // Quality selector change
+            qualitySelectInfo.addEventListener('change', function(e) {
+                requestQualityChange(e.target.value);
             });
 
             plusBtn.addEventListener('click', function(e) { e.stopPropagation(); shareMenu.style.display = shareMenu.style.display === 'flex' ? 'none' : 'flex'; });
