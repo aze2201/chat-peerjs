@@ -584,24 +584,76 @@
             }
 
             // ---------- START SCREEN SHARE ----------
-            async function startScreenShare() {
-                if (!peer) return;
+// ---------- START SCREEN SHARE – with smoothness optimizations ----------
+async function startScreenShare() {
+    if (!peer) return;
+    try {
+        if (localScreenShareStream) stopMyScreenShare(true);
+
+        // --- 1. Request screen with balanced quality/smoothness ---
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+            video: {
+                width: { ideal: 1280, max: 1280 },   // max 720p
+                height: { ideal: 720, max: 720 },
+                frameRate: { ideal: 15, max: 30 },   // max 30 fps, ideal 15
+                // Optional: prefer a more efficient codec
+                // (modern browsers will adapt automatically)
+            },
+            audio: false
+        });
+
+        localScreenShareStream = stream;
+        stopScreenShareBtn.style.display = 'inline-block';
+        screenShareLabel.innerText = '🖥️ You are sharing';
+        screenVideoContainer.style.display = 'flex';
+        remoteScreenVideo.srcObject = stream;
+        fullscreenBtn.style.display = 'inline-flex';
+
+        // --- 2. Notify host / peers ---
+        if (isHost) {
+            hostHandleNewScreenShare(myPeerId);
+        } else if (clientConn?.open) {
+            clientConn.send({ type: 'screenShareStart', sharerPeerId: myPeerId });
+        }
+
+        // --- 3. After call creation, apply bandwidth limit ---
+        //    (this will be executed for every outgoing call)
+        window.applyBitrateLimit = function(call) {
+            setTimeout(() => { // give time for the peer connection to be established
                 try {
-                    if (localScreenShareStream) stopMyScreenShare(true);
-                    const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
-                    localScreenShareStream = stream;
-                    stopScreenShareBtn.style.display = 'inline-block';
-                    screenShareLabel.innerText = '🖥️ You are sharing';
-                    screenVideoContainer.style.display = 'flex';
-                    remoteScreenVideo.srcObject = stream;
-                    fullscreenBtn.style.display = 'inline-flex';
+                    const pc = call._pc; // PeerJS internal – stable enough
+                    if (pc && pc.getSenders) {
+                        const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+                        if (sender) {
+                            const params = sender.getParameters();
+                            if (!params.encodings) params.encodings = [{}];
+                            // Set max bitrate to 500 kbps – adjust as needed
+                            params.encodings[0].maxBitrate = 500000;
+                            sender.setParameters(params).catch(e => console.warn('Bitrate limit failed:', e));
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Could not set bitrate limit', e);
+                }
+            }, 1000);
+        };
 
-                    if (isHost) hostHandleNewScreenShare(myPeerId);
-                    else if (clientConn?.open) clientConn.send({ type: 'screenShareStart', sharerPeerId: myPeerId });
+        // --- 4. Override peer.call to apply the limit on every new call ---
+        const originalCall = peer.call;
+        peer.call = function(peerId, stream, options) {
+            const call = originalCall.call(this, peerId, stream, options);
+            applyBitrateLimit(call);
+            return call;
+        };
 
-                    stream.getVideoTracks()[0].onended = () => stopMyScreenShare();
-                } catch (err) { appendSystemMessage('❌ Screen share failed'); }
-            }
+        // --- 5. If this sharer is already making calls (e.g., host), re‑apply to existing calls ---
+        screenShareCalls.forEach(call => applyBitrateLimit(call));
+
+        stream.getVideoTracks()[0].onended = () => stopMyScreenShare();
+    } catch (err) {
+        appendSystemMessage('❌ Screen share failed: ' + err.message);
+    }
+}
 
             // ---------- HOST HANDLERS (screen share) ----------
             function hostHandleNewScreenShare(sharerPeerId) {
