@@ -127,26 +127,35 @@
         .download-link { background: #1d6b7c; padding: 8px 18px; border-radius: 40px; color: white; text-decoration: none; font-weight: 600; }
         .message img { max-width: 200px; max-height: 200px; border-radius: 20px; border: 2px solid #519faf; }
 
-        /* --- INPUT ROW – longer message + unified plus menu --- */
+        /* --- INPUT ROW – compact, longer, with small 3-dot button on right --- */
         .input-row {
-            display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: #0b2c35;
-            padding: 12px 18px; border-radius: 80px; border: 1px solid #328296; position: relative;
+            display: flex; flex-wrap: wrap; align-items: center; gap: 8px; background: #0b2c35;
+            padding: 8px 12px; /* narrower row */
+            border-radius: 60px; border: 1px solid #328296; position: relative;
         }
         #messageInput {
-            flex: 4; min-width: 260px; padding: 18px 24px; border: none; border-radius: 60px;
-            font-size: 1.2rem; background: #163f49; color: white; outline: none;
+            flex: 1 1 180px; /* take available space */
+            min-width: 160px; 
+            padding: 12px 18px; /* reduced vertical padding */
+            border: none; border-radius: 50px;
+            font-size: 1rem; /* slightly smaller */
+            background: #163f49; color: white; outline: none;
             border: 1.5px solid transparent;
         }
         #messageInput:focus { border-color: #71d0e3; background: #10333b; }
+        #messageInput::placeholder { font-size: 0.95rem; color: #b8e5ee; }
 
-        /* plus button */
-        #plusBtn {
-            background: #1b5768; padding: 14px 24px; border-radius: 50px; font-size: 2rem;
-            border: 1px solid #86d6e6; cursor: pointer; color: white; line-height: 1;
+        /* small three-dot button – replaces plus */
+        #menuBtn {
+            background: #1b5768; border: none; color: white; font-size: 1.8rem; line-height: 1;
+            padding: 0 12px; border-radius: 40px; cursor: pointer; border: 1px solid #86d6e6;
+            display: flex; align-items: center; justify-content: center; height: 48px;
+            min-width: 48px;
         }
-        #plusBtn:hover { background: #2c7e91; }
+        #menuBtn:hover { background: #2c7e91; }
+
         #shareMenu {
-            display: none; position: absolute; bottom: 80px; right: 0; background: #0e2f38;
+            display: none; position: absolute; bottom: 70px; right: 10px; background: #0e2f38;
             border-radius: 28px; padding: 14px; border: 1.5px solid #4ba6b9; z-index: 200;
             flex-direction: column; gap: 12px; backdrop-filter: blur(12px);
         }
@@ -176,6 +185,14 @@
 
         .hidden { display: none !important; }
         #currentSessionSpan { display: none; }
+
+        /* mobile fine-tuning */
+        @media (max-width: 600px) {
+            .input-row { padding: 6px 10px; }
+            #messageInput { padding: 10px 16px; font-size: 1rem; }
+            #menuBtn { font-size: 1.8rem; padding: 0 10px; height: 44px; min-width: 44px; }
+            .messages { height: 500px; }
+        }
     </style>
 </head>
 <body>
@@ -276,16 +293,14 @@
                     <div class="message system">🟢 Connected. Tap video to hear audio on mobile. Adjust quality in Info.</div>
                 </div>
 
-                <!-- Input row: text + plus menu -->
+                <!-- INPUT ROW – compact, with small three-dot menu button on right -->
                 <div class="input-row">
                     <input type="text" id="messageInput" placeholder="Type a message..." autocomplete="off" disabled>
                     <input type="file" id="documentUpload" accept="*/*" style="display:none;">
-                    <div style="position: relative;">
-                        <button id="plusBtn" class="btn" style="background: #1b5768; padding: 14px 24px; font-size: 2rem;">➕</button>
-                        <div id="shareMenu">
-                            <label for="documentUpload" class="file-label">📎 File</label>
-                            <button id="screenShareBtn" class="screen-share-btn">🖥️ Screen</button>
-                        </div>
+                    <button id="menuBtn">⋮</button>
+                    <div id="shareMenu">
+                        <label for="documentUpload" class="file-label">📎 File</label>
+                        <button id="screenShareBtn" class="screen-share-btn">🖥️ Screen</button>
                     </div>
                 </div>
             </div>
@@ -382,7 +397,7 @@
             const fullscreenBtn = document.getElementById('fullscreenBtn');
             const audioHint = document.getElementById('audioHint');
 
-            const plusBtn = document.getElementById('plusBtn');
+            const menuBtn = document.getElementById('menuBtn');
             const shareMenu = document.getElementById('shareMenu');
 
             // ---------- POPULATE ICE DROPDOWN ----------
@@ -576,11 +591,9 @@
             }
 
             // ---------- 🎮 QUALITY CONTROL ----------
-            // Apply video constraints and bitrate to a sender
             async function applyQualityToSender(sender, quality) {
                 if (!sender) return;
                 const preset = QUALITY_PRESETS[quality] || QUALITY_PRESETS.medium;
-                // Apply video constraints if track exists
                 if (sender.track && sender.track.kind === 'video') {
                     try {
                         await sender.track.applyConstraints(preset.video);
@@ -588,7 +601,6 @@
                         console.warn('Could not apply video constraints', e);
                     }
                 }
-                // Set bitrate
                 try {
                     const params = sender.getParameters();
                     if (!params.encodings) params.encodings = [{}];
@@ -599,7 +611,6 @@
                 }
             }
 
-            // Apply quality to a specific call (for sharer)
             function applyQualityToCall(call, quality) {
                 setTimeout(() => {
                     try {
@@ -609,7 +620,6 @@
                             applyQualityToSender(videoSender, quality);
                             const audioSender = pc.getSenders().find(s => s.track?.kind === 'audio');
                             if (audioSender) {
-                                // Cap audio bitrate
                                 try {
                                     const params = audioSender.getParameters();
                                     if (!params.encodings) params.encodings = [{}];
@@ -621,10 +631,9 @@
                     } catch (e) {
                         console.warn('Could not apply quality to call', e);
                     }
-                }, 500); // delay to ensure PC is ready
+                }, 500);
             }
 
-            // Apply quality to local stream (when I am the sharer)
             async function applyQualityToLocalStream(quality) {
                 if (!localScreenShareStream) return;
                 const preset = QUALITY_PRESETS[quality] || QUALITY_PRESETS.medium;
@@ -637,18 +646,14 @@
                         console.warn('Could not apply local constraints', e);
                     }
                 }
-                // Also update bitrate on all existing calls
                 screenShareCalls.forEach(call => applyQualityToCall(call, quality));
             }
 
-            // Request quality change (called when user selects new quality)
             function requestQualityChange(quality) {
-                // If I am the sharer, apply directly
                 if (localScreenShareStream) {
                     applyQualityToLocalStream(quality);
                     return;
                 }
-                // Otherwise, send request to host (who will forward to sharer)
                 if (activeScreenSharperId && clientConn?.open) {
                     clientConn.send({
                         type: 'qualityRequest',
@@ -663,20 +668,15 @@
 
             // ---------- 🎧 MOBILE AUDIO FIX ----------
             function enableAudioOnMobile(videoElement) {
-                // Show hint
                 audioHint.style.display = 'inline-block';
-                // Attach one-time click listener to video container
                 const container = screenVideoContainer;
                 const enableAudio = async () => {
-                    // Resume AudioContext if any
                     if (window.audioContext && window.audioContext.state === 'suspended') {
                         await window.audioContext.resume();
                     }
-                    // Play video element (ensures audio starts)
                     if (videoElement.paused) {
                         videoElement.play().catch(e => console.warn('play failed', e));
                     }
-                    // Remove hint and listener
                     audioHint.style.display = 'none';
                     container.removeEventListener('click', enableAudio);
                 };
@@ -696,7 +696,6 @@
                         screenShareLabel.innerText = `🖥️ ${call.peer.substring(0,6)}'s screen`;
                         fullscreenBtn.style.display = 'inline-flex';
                         appendSystemMessage(`📺 Viewing screen from ${call.peer.substring(0,6)}`);
-                        // Mobile audio fix
                         enableAudioOnMobile(remoteScreenVideo);
                     });
                     call.on('close', () => {
@@ -734,7 +733,6 @@
                 try {
                     if (localScreenShareStream) stopMyScreenShare(true);
 
-                    // Default quality = medium
                     const preset = QUALITY_PRESETS.medium;
                     const stream = await navigator.mediaDevices.getDisplayMedia({
                         video: preset.video,
@@ -748,18 +746,15 @@
                     remoteScreenVideo.srcObject = stream;
                     fullscreenBtn.style.display = 'inline-flex';
 
-                    // Notify host / peers
                     if (isHost) {
                         hostHandleNewScreenShare(myPeerId);
                     } else if (clientConn?.open) {
                         clientConn.send({ type: 'screenShareStart', sharerPeerId: myPeerId });
                     }
 
-                    // Override peer.call to apply bitrate & quality to every new call
                     const originalCall = peer.call;
                     peer.call = function(peerId, stream, options) {
                         const call = originalCall.call(this, peerId, stream, options);
-                        // Apply current quality preset
                         const currentQuality = qualitySelectInfo.value;
                         applyQualityToCall(call, currentQuality);
                         screenShareCalls.push(call);
@@ -769,7 +764,6 @@
                         return call;
                     };
 
-                    // Apply to existing calls (if any)
                     screenShareCalls.forEach(call => applyQualityToCall(call, qualitySelectInfo.value));
 
                     stream.getVideoTracks()[0].onended = () => stopMyScreenShare();
@@ -922,7 +916,6 @@
                         if (activeScreenSharperId === peerId) hostBroadcastScreenShareStop(); 
                         break;
                     case 'qualityRequest':
-                        // Forward quality request to sharer
                         if (data.sharerId && data.quality) {
                             const sharerConn = hostConnections.get(data.sharerId);
                             if (sharerConn?.open) {
@@ -1023,7 +1016,6 @@
                                     const call = peer.call(viewerId, localScreenShareStream);
                                     screenShareCalls.push(call);
                                     call.on('close', () => screenShareCalls = screenShareCalls.filter(c => c !== call));
-                                    // Apply current quality
                                     applyQualityToCall(call, qualitySelectInfo.value);
                                 } catch (err) {}
                             });
@@ -1040,7 +1032,6 @@
                         }
                         break;
                     case 'applyQuality':
-                        // Sharer receives this and applies new quality
                         if (localScreenShareStream) {
                             applyQualityToLocalStream(data.quality);
                         }
@@ -1101,13 +1092,12 @@
                     peerCountDisplayInfo.innerText = '👤 1';
                 }
             }
-            // Universal fullscreen for mobile & desktop
             function toggleFullScreen() {
                 const video = remoteScreenVideo;
                 if (!document.fullscreenElement && !video.webkitDisplayingFullscreen) {
                     if (video.requestFullscreen) {
                         video.requestFullscreen();
-                    } else if (video.webkitEnterFullscreen) { // iOS Safari
+                    } else if (video.webkitEnterFullscreen) {
                         video.webkitEnterFullscreen();
                     } else if (video.webkitRequestFullscreen) {
                         video.webkitRequestFullscreen();
@@ -1174,13 +1164,20 @@
                 }
             });
 
-            // Quality selector change
             qualitySelectInfo.addEventListener('change', function(e) {
                 requestQualityChange(e.target.value);
             });
 
-            plusBtn.addEventListener('click', function(e) { e.stopPropagation(); shareMenu.style.display = shareMenu.style.display === 'flex' ? 'none' : 'flex'; });
-            document.addEventListener('click', function(e) { if (!plusBtn.contains(e.target) && !shareMenu.contains(e.target)) shareMenu.style.display = 'none'; });
+            // Menu button toggles share menu
+            menuBtn.addEventListener('click', function(e) { 
+                e.stopPropagation(); 
+                shareMenu.style.display = shareMenu.style.display === 'flex' ? 'none' : 'flex'; 
+            });
+            document.addEventListener('click', function(e) { 
+                if (!menuBtn.contains(e.target) && !shareMenu.contains(e.target)) {
+                    shareMenu.style.display = 'none'; 
+                }
+            });
 
             infoToggleBtn.addEventListener('click', function() {
                 infoPanel.style.display = infoPanel.style.display === 'flex' ? 'none' : 'flex';
