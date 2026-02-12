@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
-    <title>📱 GroupChat · DOC + SCREEN · mobile WhatsApp style</title>
+    <title>📡 GroupChat · Any‑screen‑share (CLIENT WORKS) · Auto‑ICE</title>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         /* ---------- 🎨 WhatsApp/Telegram inspired, big & finger-friendly ---------- */
@@ -18,12 +18,10 @@
             border-radius: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); padding: 20px 16px;
             border: 1px solid rgba(80,140,180,0.3);
         }
-        /* header / top */
         .header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-bottom: 16px; }
         h1 { font-size: 1.9rem; font-weight: 700; color: #e6f7ff; letter-spacing: -0.5px; display: flex; align-items: center; gap: 6px; text-shadow: 0 2px 5px #00000020; }
         .ice-badge { background: #1f5e80; color: white; padding: 6px 18px; border-radius: 40px; font-size: 0.8rem; font-weight: 600; border: 1px solid #7ab3c9; }
 
-        /* ---------- username – always visible, larger ---------- */
         .username-panel {
             background: #142e3a; border-radius: 60px; padding: 12px 20px; margin-bottom: 20px;
             display: flex; flex-wrap: wrap; align-items: center; gap: 12px; border: 1px solid #2e6b7c;
@@ -38,7 +36,26 @@
         #usernameInput:focus { border-color: #4ab0d0; background: #15323d; }
         #usernameInput::placeholder { color: #a0c6d0; }
 
-        /* ---------- pre‑chat (room generate) ---------- */
+        /* ---------- ICE SERVER SELECTOR ---------- */
+        .ice-selector-panel {
+            background: #10313b; border-radius: 60px; padding: 12px 20px; margin-bottom: 20px;
+            display: flex; flex-wrap: wrap; align-items: center; gap: 16px; border: 1px solid #36879b;
+        }
+        .ice-selector-panel label { font-weight: 700; color: #b6ecff; font-size: 0.95rem; }
+        #iceProfileSelect {
+            background: #1f5768; color: white; border: none; padding: 12px 24px; border-radius: 50px;
+            font-size: 0.95rem; font-weight: 600; cursor: pointer; border: 1px solid #6ac8e0;
+            flex: 1; min-width: 200px;
+        }
+        #retryManualBtn {
+            background: #2e7285; border: none; color: white; padding: 10px 20px; border-radius: 40px;
+            font-weight: 600; display: flex; gap: 6px; align-items: center; cursor: pointer;
+        }
+        #currentIceProfile {
+            color: #c2ecff; background: #0d2a32; padding: 8px 18px; border-radius: 40px; font-size: 0.8rem;
+            border: 1px solid #3597aa; display: inline-block;
+        }
+
         .section { background: #112e38cc; backdrop-filter: blur(8px); border-radius: 36px; padding: 24px 20px; margin-bottom: 20px; border: 1px solid #3c798b; }
         .flex-row { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
         .btn {
@@ -55,7 +72,6 @@
         #customSessionId { flex:1; padding: 16px 24px; border-radius: 60px; border: none; background: #1b4957; color: white; font-size: 1.1rem; border: 1px solid #30809b; }
         #customSessionId::placeholder { color: #addee9; }
 
-        /* ---------- CHAT interface – big bubbles, comfortable ---------- */
         .chat-container {
             background: #0a232b; border-radius: 36px; padding: 20px; margin-top: 8px;
             border: 1px solid #2d7488; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
@@ -65,7 +81,6 @@
             overflow-y: auto; display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px;
             border: 1px solid #275f6b; box-shadow: inset 0 6px 12px #00000030;
         }
-        /* ————— message bubbles ————— */
         .message {
             background: #1e424b; padding: 14px 20px; border-radius: 24px 24px 24px 8px;
             max-width: 85%; word-break: break-word; align-self: flex-start;
@@ -80,7 +95,6 @@
             background: transparent; color: #b7e1ed; align-self: center; font-size: 0.95rem;
             border: 1px dashed #519faf; max-width: 98%; backdrop-filter: blur(4px);
         }
-        /* file attachments – nice card */
         .file-attachment {
             background: #0f313a; border-radius: 18px; padding: 12px 16px; margin-top: 8px;
             display: flex; align-items: center; gap: 14px; border: 1px solid #5ba9b9;
@@ -92,7 +106,6 @@
         .download-link { background: #1d6b7c; padding: 8px 18px; border-radius: 40px; color: white; text-decoration: none; font-weight: 600; margin-left: auto; }
         .message img { max-width: 200px; max-height: 200px; border-radius: 20px; display: block; margin-top: 8px; border: 2px solid #519faf; }
 
-        /* ————— input row – sticky, big ————— */
         .input-row {
             display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: #0b2c35;
             padding: 12px 18px; border-radius: 80px; border: 1px solid #328296;
@@ -113,7 +126,6 @@
         .file-label:hover, .screen-share-btn:hover { background: #2c7e91; }
         #sendBtn { background: #136b7c; padding: 16px 28px; font-size: 1.2rem; }
 
-        /* ————— screen share preview ————— */
         .screen-video-container {
             background: #001116; border-radius: 28px; padding: 16px; margin-bottom: 16px;
             border: 2px solid #00c8ff; display: none; flex-wrap: wrap; align-items: center; gap: 16px;
@@ -121,7 +133,6 @@
         .screen-video-container video { width: 100%; max-height: 260px; border-radius: 24px; border: 2px solid #3fa5b5; background: black; }
         .stop-share-btn { background: #c24343; padding: 12px 24px; border-radius: 50px; font-weight: bold; border: none; color: white; font-size: 1rem; }
 
-        /* ————— status bar ————— */
         .status-bar { display: flex; flex-wrap: wrap; justify-content: space-between; margin-top: 16px; font-size: 0.9rem; color: #d2f0fc; background: #0b2a33; padding: 12px 22px; border-radius: 60px; border: 1px solid #3f94a3; }
         .dot { width: 12px; height: 12px; border-radius: 50%; background: #708e96; display: inline-block; margin-right: 8px; }
         .dot.active { background: #3ae03a; box-shadow: 0 0 18px #26e626; }
@@ -139,17 +150,24 @@
 </head>
 <body>
     <div class="app" id="app">
-
         <!-- header -->
         <div class="header">
-            <h1>💬 Share<span style="color:#b3ecff;">Chat</span> <span style="font-size:0.9rem; background:#1f6270; padding:6px 18px; border-radius:40px;">DOC+SCREEN</span></h1>
-            <span class="ice-badge">📱 mobile TURN</span>
+            <h1>💬 Share<span style="color:#b3ecff;">Chat</span> <span style="font-size:0.9rem; background:#1f6270; padding:6px 18px; border-radius:40px;">Client‑Share</span></h1>
+            <span class="ice-badge">📱 Auto‑ICE</span>
         </div>
 
-        <!-- GLOBAL USERNAME (big) -->
+        <!-- GLOBAL USERNAME -->
         <div class="username-panel">
             <label>👤 Name</label>
             <input type="text" id="usernameInput" placeholder="Your nickname" value="Guest" autocomplete="off">
+        </div>
+
+        <!-- ========== 🌍 ICE SERVER PROFILES – visible always, automatic fallback ========= -->
+        <div class="ice-selector-panel">
+            <label>🔄 ICE profile:</label>
+            <select id="iceProfileSelect"></select>
+            <span id="currentIceProfile">⚙️ auto‑fallback active</span>
+            <button id="retryManualBtn" title="Retry with selected profile">🔁 Retry</button>
         </div>
 
         <!-- ========== PRE‑CHAT: SESSION (only if no session in URL) ========= -->
@@ -166,7 +184,7 @@
                 </div>
                 <div style="margin-top: 24px;">
                     <button id="hostChatBtn" class="btn" style="background: #1c7c8c; padding: 16px 36px;">🎤 Host this room</button>
-                    <span style="margin-left: 12px; color: #b0e4f0; font-size:1rem;">(you become hub)</span>
+                    <span style="margin-left: 12px; color: #b0e4f0; font-size:1rem;">(hub, uses selected profile)</span>
                 </div>
             </div>
         </div>
@@ -187,30 +205,27 @@
                     <span id="connectionStatus" class="peer-count">⚙️ connecting</span>
                 </div>
 
-                <!-- 🖥️ SCREEN SHARE VIDEO CONTAINER (visible only when sharing) -->
+                <!-- 🖥️ SCREEN SHARE VIDEO CONTAINER -->
                 <div id="screenVideoContainer" class="screen-video-container">
                     <video id="remoteScreenVideo" autoplay playsinline style="max-width:100%;"></video>
                     <div style="display:flex; gap:16px; align-items:center;">
-                        <span style="color:white; font-weight:700;">🖥️ SCREEN SHARE</span>
+                        <span style="color:white; font-weight:700;" id="screenShareLabel">🖥️ SCREEN SHARE</span>
                         <button id="stopScreenShareBtn" class="stop-share-btn" style="display:none;">⏹️ Stop sharing</button>
                     </div>
                 </div>
 
                 <!-- Messages log -->
                 <div class="messages" id="messageLog">
-                    <div class="message system">🟢 Welcome. Set your name & start chatting. Host can share screen.</div>
+                    <div class="message system">🟢 Welcome. ANYONE can share screen – new share kills previous. CLIENT SHARE FIXED.</div>
                 </div>
 
-                <!-- Input row: MESSAGE + DOCUMENT (any file) + SCREEN SHARE (host only) + SEND -->
+                <!-- Input row -->
                 <div class="input-row">
                     <input type="text" id="messageInput" placeholder="Type a message..." autocomplete="off" disabled>
-                    <!-- 📎 DOCUMENT SHARE (replaces old image-only) -->
-                    <label for="documentUpload" class="file-label" id="docLabel" title="Share any document">📎</label>
+                    <label for="documentUpload" class="file-label" id="docLabel" title="Share any file">📎</label>
                     <input type="file" id="documentUpload" accept="*/*" style="display:none;">
-
-                    <!-- 🖥️ SCREEN SHARE BUTTON (visible only for host) -->
-                    <button id="screenShareBtn" class="screen-share-btn" title="Share screen (laptop)" style="display:none;">🖥️</button>
-
+                    <!-- Screen share button visible to everyone in chat -->
+                    <button id="screenShareBtn" class="screen-share-btn" title="Share your screen (anyone)">🖥️</button>
                     <button id="sendBtn" class="btn" disabled>📤</button>
                 </div>
 
@@ -223,7 +238,7 @@
         </div>
 
         <div style="text-align: center; margin-top: 24px; color: #a8d8e6; font-size: 0.8rem;">
-            ⚡ STUN+TURN · any file share · screen share (host) · mobile oversized UI
+            ⚡ Auto ICE fallback · FIXED: viewers answer with dummy audio – client screen share now works
         </div>
     </div>
 
@@ -231,30 +246,39 @@
         (function(){
             "use strict";
 
-            // ---------- 🌍 ICE SERVERS (mobile friendly, TURN boosted) ----------
-            const ICE_CONFIG = {
-                iceServers: [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'turn:openrelayproject.org:3478', username: 'openrelayproject', credential: 'openrelayproject' },
-                    { urls: 'turn:turn.anyfirewall.com:443?transport=tcp', username: 'webrtc', credential: 'webrtc' }
-                ]
-            };
+            // ---------- 🌍 EXTENSIVE LIST OF ICE SERVER PROFILES (auto-fallback) ----------
+            const SERVER_PROFILES = [
+                { name: "1. Google STUN only", config: { iceServers: [ { urls: 'stun:stun.l.google.com:19302' } ] } },
+                { name: "2. OpenRelay TURN (UDP)", config: { iceServers: [ { urls: 'turn:openrelayproject.org:3478', username: 'openrelayproject', credential: 'openrelayproject' } ] } },
+                { name: "3. OpenRelay TURN (TCP)", config: { iceServers: [ { urls: 'turn:openrelayproject.org:3478?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' } ] } },
+                { name: "4. AnyFirewall TURN (TCP/443)", config: { iceServers: [ { urls: 'turn:turn.anyfirewall.com:443?transport=tcp', username: 'webrtc', credential: 'webrtc' } ] } },
+                { name: "5. numb.viagenie.ca TURN", config: { iceServers: [ { urls: 'turn:numb.viagenie.ca:3478', username: 'letmein', credential: 'letmein' } ] } },
+                { name: "6. Google STUN + OpenRelay (UDP)", config: { iceServers: [ { urls: 'stun:stun.l.google.com:19302' }, { urls: 'turn:openrelayproject.org:3478', username: 'openrelayproject', credential: 'openrelayproject' } ] } },
+                { name: "7. Google STUN + AnyFirewall TCP", config: { iceServers: [ { urls: 'stun:stun.l.google.com:19302' }, { urls: 'turn:turn.anyfirewall.com:443?transport=tcp', username: 'webrtc', credential: 'webrtc' } ] } },
+                { name: "8. Full combo (Google + OpenRelay + AnyFirewall)", config: { iceServers: [ { urls: 'stun:stun.l.google.com:19302' }, { urls: 'turn:openrelayproject.org:3478', username: 'openrelayproject', credential: 'openrelayproject' }, { urls: 'turn:turn.anyfirewall.com:443?transport=tcp', username: 'webrtc', credential: 'webrtc' } ] } }
+            ];
 
             // ---------- GLOBAL STATE ----------
             let sessionId = null, isHost = false, myPeerId = null, myUsername = 'Guest';
             let peer = null;
-            let hostConnections = new Map();   // host -> connected clients
-            let clientConn = null;            // client -> host connection
+            let hostConnections = new Map();   // host -> map of client Peer->connection
+            let clientConn = null;            // client -> host data connection
 
-            // Message store + dedup
+            // ---------- SCREEN SHARE (any participant) – FIXED: sharer calls viewers, viewers answer with dummy stream ----------
+            let activeScreenSharperId = null;       // who is currently sharing (tracked by host)
+            let localScreenShareStream = null;      // if I am the sharer, this is my stream
+            let isViewingScreen = false;            // whether I am currently viewing a screen
+            let screenShareCalls = [];              // if I am sharer, array of active MediaConnections to viewers
+
+            // ---------- ICE fallback state ----------
+            let currentProfileIndex = 0;
+            let isConnecting = false;
+            let manualRetry = false;
+
+            // Message store
             let messageStore = [];
             let receivedMsgIds = new Set();
-            let hostMessageMap = new Map();   // for ack tracking (host)
-
-            // ---------- SCREEN SHARE (HOST ONLY) ----------
-            let screenShareStream = null;
-            let screenShareCalls = [];        // store all media connections (as caller)
-            let isSharingScreen = false;
+            let hostMessageMap = new Map();        // host only: msgId -> {msg, acks}
 
             // UI elements
             const preChatSection = document.getElementById('preChatSection');
@@ -263,8 +287,7 @@
             const messageLog = document.getElementById('messageLog');
             const messageInput = document.getElementById('messageInput');
             const sendBtn = document.getElementById('sendBtn');
-            const documentUpload = document.getElementById('documentUpload'); // renamed from imageUpload
-            const sessionLinkContainer = document.getElementById('sessionLinkContainer');
+            const documentUpload = document.getElementById('documentUpload');
             const roomLinkDisplay = document.getElementById('roomLinkDisplay');
             const copyRoomLinkBtn = document.getElementById('copyRoomLinkBtn');
             const currentSessionSpan = document.getElementById('currentSessionSpan');
@@ -276,30 +299,46 @@
             const screenVideoContainer = document.getElementById('screenVideoContainer');
             const remoteScreenVideo = document.getElementById('remoteScreenVideo');
             const stopScreenShareBtn = document.getElementById('stopScreenShareBtn');
+            const screenShareLabel = document.getElementById('screenShareLabel');
 
-            // ---------- helper ----------
+            // ICE selector
+            const iceProfileSelect = document.getElementById('iceProfileSelect');
+            const currentIceProfile = document.getElementById('currentIceProfile');
+            const retryManualBtn = document.getElementById('retryManualBtn');
+
+            // ---------- Populate ICE dropdown ----------
+            function populateIceDropdown() {
+                iceProfileSelect.innerHTML = '';
+                SERVER_PROFILES.forEach((profile, idx) => {
+                    const option = document.createElement('option');
+                    option.value = idx;
+                    option.textContent = profile.name;
+                    iceProfileSelect.appendChild(option);
+                });
+                iceProfileSelect.value = SERVER_PROFILES.length - 1;
+            }
+            populateIceDropdown();
+
+            // ---------- Helpers ----------
             function generateUUID() { return Date.now() + '-' + Math.random().toString(36).substring(2,10); }
             function getUrlParam(p) { return new URLSearchParams(window.location.search).get(p); }
             function buildSessionUrl(s) { const url = new URL(window.location.href); url.searchParams.set('session', s); return url.toString(); }
 
-            // ---------- DISPLAY MESSAGE (now with FILE support) ----------
+            // ---------- Display message ----------
             function displayMessage(msg, isSelf = false) {
                 const msgDiv = document.createElement('div');
                 msgDiv.className = 'message' + (isSelf ? ' self' : '');
                 msgDiv.dataset.msgId = msg.id;
-
                 let senderDisplay = msg.senderName ? msg.senderName : (msg.senderId === myPeerId ? 'You' : 'Peer');
                 if (isSelf) senderDisplay = 'You';
-
                 let contentHtml = '';
-                if (msg.type === 'file' || msg.type === 'image') {  // support both old image and new file
-                    if (msg.fileInfo) {  // new document format
+                if (msg.type === 'file' || msg.type === 'image') {
+                    if (msg.fileInfo) {
                         const file = msg.fileInfo;
                         const isImage = file.type.startsWith('image/');
                         if (isImage) {
                             contentHtml = `<strong>${senderDisplay}:</strong><br><img src="${msg.content}" alt="image" style="max-width:200px; border-radius:16px;">`;
                         } else {
-                            // generic file attachment card
                             contentHtml = `<strong>${senderDisplay}:</strong> 
                                 <div class="file-attachment">
                                     <span class="file-icon">📄</span>
@@ -310,7 +349,7 @@
                                     <a href="${msg.content}" download="${file.name}" class="download-link">⬇️ Download</a>
                                 </div>`;
                         }
-                    } else {  // legacy image (just in case)
+                    } else {
                         contentHtml = `<strong>${senderDisplay}:</strong><br><img src="${msg.content}" style="max-width:180px;">`;
                     }
                 } else {
@@ -330,63 +369,348 @@
                 return true;
             }
 
-            // ---------- HOST: process new message (chat/file) ----------
-            function hostProcessNewMessage(senderPeerId, senderName, type, content, fileInfo = null, providedMsgId = null) {
-                if (!myPeerId) return;
-                const msgId = providedMsgId || generateUUID();
-                const msg = {
-                    id: msgId, senderId: senderPeerId, senderName: senderName || 'unknown',
-                    type: type, content: content, timestamp: Date.now()
-                };
-                if (fileInfo) msg.fileInfo = fileInfo;  // attach file metadata
+            // ---------- ICE & Peer fallback (client) ----------
+            function monitorIceStateWithFallback(peerInstance, uiIceElement, uiDotElement, profileIndex) {
+                if (!peerInstance) return;
+                let iceConnected = false;
+                const failTimeout = setTimeout(() => {
+                    if (!iceConnected && !isHost && !manualRetry && isConnecting) {
+                        appendSystemMessage(`⏳ ICE timeout with profile "${SERVER_PROFILES[profileIndex].name}", switching...`);
+                        cleanupPeerAndRetry(profileIndex + 1);
+                    }
+                }, 18000);
 
-                const ackSet = new Set([senderPeerId, myPeerId]);
-                hostMessageMap.set(msgId, { msg, acks: ackSet });
+                peerInstance.on('iceconnectionstatechange', () => {
+                    const state = peerInstance.iceConnectionState || 'new';
+                    uiIceElement.innerText = state;
+                    uiDotElement.className = state === 'connected' || state === 'completed' ? 'dot active' : 'dot';
+                    if (state === 'connected' || state === 'completed') {
+                        iceConnected = true;
+                        clearTimeout(failTimeout);
+                        currentIceProfile.innerText = `✅ using: ${SERVER_PROFILES[profileIndex].name}`;
+                    }
+                });
 
-                addMessageToStore(msg, senderPeerId === myPeerId);
-                const broadcastMsg = { type: 'broadcast', msg: msg };
-                hostSendMessageToAll(broadcastMsg, senderPeerId);
+                peerInstance.on('error', (err) => {
+                    console.warn(`Peer error with profile ${profileIndex}:`, err);
+                    if (!iceConnected && !isHost && !manualRetry && isConnecting) {
+                        cleanupPeerAndRetry(profileIndex + 1);
+                    }
+                });
             }
 
-            function hostSendMessageToAll(data, excludePeerId = null) {
-                hostConnections.forEach((conn, pid) => { if (pid !== excludePeerId && conn.open) conn.send(data); });
+            function cleanupPeerAndRetry(nextIndex) {
+                if (isHost) return;
+                if (nextIndex >= SERVER_PROFILES.length) {
+                    appendSystemMessage('❌ All ICE profiles failed. Please retry manually.');
+                    connectionStatus.innerText = '❌ all failed';
+                    isConnecting = false;
+                    return;
+                }
+                if (peer) { peer.destroy(); peer = null; }
+                clientConn = null;
+                attemptClientConnectionWithProfile(nextIndex);
             }
 
-            // ---------- HOST: screen share ----------
-            async function startScreenShare() {
-                if (!isHost || !peer) return;
+            // ---------- CLIENT AUTO JOIN with fallback ----------
+            function autoJoinClient() {
+                isHost = false;
+                const startIdx = parseInt(iceProfileSelect.value, 10) || 0;
+                attemptClientConnectionWithProfile(startIdx);
+            }
+
+            function attemptClientConnectionWithProfile(profileIndex) {
+                if (profileIndex >= SERVER_PROFILES.length) {
+                    appendSystemMessage('❌ No more ICE profiles to try.');
+                    connectionStatus.innerText = '❌ connection failed';
+                    isConnecting = false;
+                    return;
+                }
+                isConnecting = true;
+                manualRetry = false;
+                currentProfileIndex = profileIndex;
+                const profile = SERVER_PROFILES[profileIndex];
+                appendSystemMessage(`🔄 Trying ICE profile ${profileIndex+1}/${SERVER_PROFILES.length}: ${profile.name}`);
+                connectionStatus.innerText = `🟡 trying ${profileIndex+1}/${SERVER_PROFILES.length}`;
+                currentIceProfile.innerText = `⏳ testing: ${profile.name}`;
+
+                peer = new Peer({ config: profile.config, debug: 1 });
+                monitorIceStateWithFallback(peer, iceState, stateDot, profileIndex);
+
+                // Listen for incoming calls (for screen share – viewers receive call from sharer)
+                peer.on('call', handleIncomingScreenShareCall);
+
+                peer.on('open', (id) => {
+                    if (!isConnecting) return;
+                    myPeerId = id;
+                    connectionStatus.innerText = '✅ connected, joining room';
+                    const conn = peer.connect(sessionId, { reliable: true });
+                    clientConn = conn;
+                    setupClientConnection(conn);
+                });
+
+                peer.on('error', (err) => {
+                    if (err.type === 'peer-unavailable') {
+                        appendSystemMessage('❌ Room not found (host offline?)');
+                        connectionStatus.innerText = '❌ no room';
+                    } else {
+                        if (!manualRetry && isConnecting) cleanupPeerAndRetry(profileIndex + 1);
+                    }
+                });
+            }
+
+            // ---------- Setup client data connection ----------
+            function setupClientConnection(conn) {
+                const connTimeout = setTimeout(() => {
+                    if (!conn.open && !manualRetry) {
+                        appendSystemMessage('⏳ Connection open timeout – trying next ICE profile...');
+                        if (peer) peer.destroy();
+                        cleanupPeerAndRetry(currentProfileIndex + 1);
+                    }
+                }, 15000);
+
+                conn.on('open', () => {
+                    clearTimeout(connTimeout);
+                    if (!isConnecting) return;
+                    isConnecting = false;
+                    connectionStatus.innerText = '🟢 connected';
+                    iceState.innerText = 'open';
+                    stateDot.className = 'dot active';
+                    enableChat(true);
+                    // Show screen share button for clients too
+                    screenShareBtn.style.display = 'inline-flex';
+                    conn.send({ type: 'setUsername', username: myUsername, peerId: myPeerId });
+                    appendSystemMessage('Joined room as ' + myUsername);
+                });
+
+                conn.on('data', handleClientData);
+                conn.on('close', () => { 
+                    connectionStatus.innerText = '⚫ disconnected'; 
+                    enableChat(false);
+                    screenShareBtn.style.display = 'none';
+                });
+                conn.on('error', (e) => console.error(e));
+            }
+
+            // ---------- 🔥 FIXED: Incoming call handler – viewers answer with a dummy audio track ----------
+            async function handleIncomingScreenShareCall(call) {
+                console.log('Incoming call from', call.peer);
+                if (localScreenShareStream) {
+                    // I am the SHARER: answer with my stream
+                    call.answer(localScreenShareStream);
+                    call.on('close', () => console.log('Screen share call closed (sharer side)'));
+                    call.on('error', (err) => console.error('Sharer call error:', err));
+                } else {
+                    // I am a VIEWER: answer with a dummy audio track (ensures call is established)
+                    try {
+                        // Create a dummy silent audio track
+                        const dummyStream = await createDummyAudioStream();
+                        call.answer(dummyStream);
+                        console.log('Answered call with dummy audio, waiting for video stream...');
+                        
+                        call.on('stream', (remoteStream) => {
+                            // Replace the dummy audio with the real combined stream
+                            // We want the video, so we add the video track to our video element
+                            // The dummy audio can stay or be replaced; we just display the video
+                            screenVideoContainer.style.display = 'flex';
+                            remoteScreenVideo.srcObject = remoteStream;
+                            isViewingScreen = true;
+                            const sharerId = call.peer;
+                            screenShareLabel.innerText = `🖥️ ${sharerId.substring(0,6)}'s screen`;
+                            appendSystemMessage(`📺 Viewing screen from ${sharerId.substring(0,6)}...`);
+                        });
+
+                        call.on('close', () => {
+                            if (isViewingScreen) {
+                                screenVideoContainer.style.display = 'none';
+                                remoteScreenVideo.srcObject = null;
+                                isViewingScreen = false;
+                                appendSystemMessage('🖥️ Screen share ended');
+                            }
+                        });
+                        call.on('error', (err) => console.error('Viewer call error:', err));
+                    } catch (err) {
+                        console.error('Failed to answer call with dummy audio:', err);
+                        // Fallback: answer with null (might still work)
+                        call.answer();
+                    }
+                }
+            }
+
+            // Create a dummy MediaStream with a silent audio track
+            async function createDummyAudioStream() {
+                // Try to get a silent audio track from AudioContext
                 try {
-                    screenShareStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
-                    isSharingScreen = true;
-                    screenVideoContainer.style.display = 'flex';
-                    remoteScreenVideo.srcObject = screenShareStream;
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const oscillator = audioContext.createOscillator();
+                    const dst = oscillator.connect(audioContext.createMediaStreamDestination());
+                    oscillator.start();
+                    const stream = dst.stream;
+                    // Immediately stop the oscillator to make it silent
+                    oscillator.stop();
+                    return stream;
+                } catch (e) {
+                    console.warn('Could not create dummy audio, using empty stream', e);
+                    return new MediaStream();
+                }
+            }
+
+            // ---------- Stop my own screen share (I am the sharer) ----------
+            function stopMyScreenShare(localOnly = false) {
+                if (localScreenShareStream) {
+                    localScreenShareStream.getTracks().forEach(t => t.stop());
+                    localScreenShareStream = null;
+                }
+                // Close all outgoing calls (to viewers)
+                screenShareCalls.forEach(call => call.close());
+                screenShareCalls = [];
+                stopScreenShareBtn.style.display = 'none';
+                // Hide local preview if visible
+                if (isViewingScreen) {
+                    screenVideoContainer.style.display = 'none';
+                    remoteScreenVideo.srcObject = null;
+                    isViewingScreen = false;
+                }
+                // Notify host that I stopped sharing
+                if (!isHost && clientConn?.open) {
+                    clientConn.send({ type: 'screenShareStop' });
+                } else if (isHost) {
+                    hostBroadcastScreenShareStop();
+                }
+            }
+
+            // ---------- Start screen share (anyone) – sharer will call viewers ----------
+            async function startScreenShare() {
+                if (!peer) return;
+                try {
+                    // Stop any existing local share
+                    if (localScreenShareStream) stopMyScreenShare(true);
+                    // Request screen
+                    const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+                    localScreenShareStream = stream;
+                    // Show local stop button and preview
                     stopScreenShareBtn.style.display = 'inline-block';
+                    screenShareLabel.innerText = '🖥️ You are sharing';
+                    screenVideoContainer.style.display = 'flex';
+                    remoteScreenVideo.srcObject = stream; // local preview
 
-                    // call all currently connected clients
-                    hostConnections.forEach((conn, clientPeerId) => {
-                        const call = peer.call(clientPeerId, screenShareStream);
-                        screenShareCalls.push(call);
-                        call.on('close', () => console.log('screen call closed'));
-                    });
+                    // Notify host that I am starting to share
+                    if (isHost) {
+                        hostHandleNewScreenShare(myPeerId);
+                    } else {
+                        if (clientConn?.open) {
+                            clientConn.send({ type: 'screenShareStart', sharerPeerId: myPeerId });
+                        }
+                    }
 
-                    // when new client connects, host will call them (handled in host connection logic)
+                    // When user stops via browser UI
+                    stream.getVideoTracks()[0].onended = () => {
+                        stopMyScreenShare();
+                    };
                 } catch (err) {
                     console.error('Screen share error:', err);
                     appendSystemMessage('❌ Screen share failed: ' + err.message);
                 }
             }
 
-            function stopScreenShare() {
-                if (screenShareStream) {
-                    screenShareStream.getTracks().forEach(t => t.stop());
-                    screenShareStream = null;
+            // ---------- HOST: handle new screen share request – tell sharer to call viewers ----------
+            function hostHandleNewScreenShare(sharerPeerId) {
+                // Stop previous screen share if any
+                if (activeScreenSharperId && activeScreenSharperId !== sharerPeerId) {
+                    hostBroadcastScreenShareStop();
                 }
-                screenShareCalls.forEach(call => call.close());
-                screenShareCalls = [];
-                isSharingScreen = false;
-                screenVideoContainer.style.display = 'none';
-                stopScreenShareBtn.style.display = 'none';
-                remoteScreenVideo.srcObject = null;
+                activeScreenSharperId = sharerPeerId;
+
+                // Compile list of viewers: all other connected peers (including host if not sharer)
+                const viewers = [];
+                hostConnections.forEach((conn, peerId) => {
+                    if (peerId !== sharerPeerId) viewers.push(peerId);
+                });
+                if (isHost && sharerPeerId !== myPeerId) {
+                    viewers.push(myPeerId);
+                }
+
+                // Tell the SHARER to start calling all viewers
+                if (sharerPeerId === myPeerId) {
+                    // Host is the sharer – call viewers directly
+                    hostAsSharerCallViewers(viewers);
+                } else {
+                    const sharerConn = hostConnections.get(sharerPeerId);
+                    if (sharerConn && sharerConn.open) {
+                        sharerConn.send({ type: 'screenShareInitiate', viewers: viewers });
+                    }
+                }
+
+                // Notify all viewers (UI only)
+                const startMsg = { type: 'screenShareStart', sharerPeerId: sharerPeerId };
+                hostConnections.forEach((conn, pid) => {
+                    if (pid !== sharerPeerId && conn.open) conn.send(startMsg);
+                });
+                if (isHost && sharerPeerId !== myPeerId) {
+                    appendSystemMessage(`📺 ${sharerPeerId.substring(0,6)} started screen share – waiting for stream...`);
+                } else {
+                    appendSystemMessage(`📺 ${sharerPeerId.substring(0,6)} started screen share`);
+                }
+            }
+
+            // ---------- Host is the sharer: call all viewers ----------
+            function hostAsSharerCallViewers(viewerIds) {
+                if (!localScreenShareStream) return;
+                viewerIds.forEach(viewerId => {
+                    try {
+                        const call = peer.call(viewerId, localScreenShareStream);
+                        screenShareCalls.push(call);
+                        call.on('close', () => {
+                            screenShareCalls = screenShareCalls.filter(c => c !== call);
+                        });
+                        call.on('error', (err) => console.error('Host sharer call error:', err));
+                    } catch (err) {
+                        console.error('Failed to call viewer:', viewerId, err);
+                    }
+                });
+            }
+
+            // ---------- HOST: broadcast screen share stop ----------
+            function hostBroadcastScreenShareStop() {
+                const message = { type: 'screenShareStop' };
+                hostConnections.forEach((conn) => {
+                    if (conn.open) conn.send(message);
+                });
+                if (isViewingScreen) {
+                    screenVideoContainer.style.display = 'none';
+                    remoteScreenVideo.srcObject = null;
+                    isViewingScreen = false;
+                }
+                if (activeScreenSharperId === myPeerId) {
+                    stopMyScreenShare(true);
+                }
+                activeScreenSharperId = null;
+                appendSystemMessage('🖥️ Screen share stopped');
+            }
+
+            // ---------- When new peer joins, add them to active sharer ----------
+            function hostNotifyNewPeerToSharer(newPeerId) {
+                if (activeScreenSharperId) {
+                    if (activeScreenSharperId === myPeerId) {
+                        // Host is sharer
+                        if (localScreenShareStream) {
+                            try {
+                                const call = peer.call(newPeerId, localScreenShareStream);
+                                screenShareCalls.push(call);
+                                call.on('close', () => {
+                                    screenShareCalls = screenShareCalls.filter(c => c !== call);
+                                });
+                            } catch (err) {
+                                console.error('Failed to call new peer:', err);
+                            }
+                        }
+                    } else {
+                        const sharerConn = hostConnections.get(activeScreenSharperId);
+                        if (sharerConn && sharerConn.open) {
+                            sharerConn.send({ type: 'screenShareAddViewer', viewerId: newPeerId });
+                        }
+                    }
+                }
             }
 
             // ---------- HOST SETUP ----------
@@ -399,16 +723,22 @@
                 currentSessionSpan.innerText = sessionId;
                 roomLinkDisplay.innerText = buildSessionUrl(sessionId);
 
-                peer = new Peer(sessionId, { config: ICE_CONFIG, debug: 1 });
+                const profileIndex = parseInt(iceProfileSelect.value, 10) || 0;
+                const profile = SERVER_PROFILES[profileIndex];
+                appendSystemMessage(`🎤 Host using ICE profile: ${profile.name}`);
+                currentIceProfile.innerText = `🎤 host: ${profile.name}`;
+
+                peer = new Peer(sessionId, { config: profile.config, debug: 1 });
                 monitorIceState(peer, iceState, stateDot);
+                peer.on('call', handleIncomingScreenShareCall);
 
                 peer.on('open', (id) => {
                     myPeerId = id;
                     connectionStatus.innerText = '🎤 Hosting';
                     iceState.innerText = 'listening';
                     enableChat(true);
-                    appendSystemMessage('Host ready. Share link. You can share screen (🖥️).');
-                    screenShareBtn.style.display = 'inline-flex'; // only host sees it
+                    appendSystemMessage('Host ready. ANYONE can share screen – client share FIXED.');
+                    screenShareBtn.style.display = 'inline-flex';
                 });
 
                 peer.on('connection', (conn) => {
@@ -417,27 +747,19 @@
                     updatePeerCountUI();
                     appendSystemMessage(`➕ peer joined: ${remotePeerId.substring(0,6)}...`);
 
-                    // if host is already sharing screen, call this new client
-                    if (isSharingScreen && screenShareStream) {
-                        const call = peer.call(remotePeerId, screenShareStream);
-                        screenShareCalls.push(call);
-                    }
+                    // If there's an active screen share, tell sharer to call this new peer
+                    hostNotifyNewPeerToSharer(remotePeerId);
 
                     conn.on('data', (data) => handleHostData(remotePeerId, data));
                     conn.on('close', () => {
                         hostRemovePeer(remotePeerId);
                         appendSystemMessage(`➖ peer left: ${remotePeerId.substring(0,6)}...`);
+                        if (activeScreenSharperId === remotePeerId) {
+                            hostBroadcastScreenShareStop();
+                        }
                     });
-                    conn.on('error', (err) => console.error('Host conn error:', err));
+                    conn.on('error', (e) => console.error(e));
                     hostSendHistory(conn);
-                });
-
-                peer.on('call', (call) => {
-                    // Host is only caller for screen share, but if someone else tries to call, answer? We don't support client share – just ignore/answer with no stream.
-                    call.answer(); 
-                    call.on('stream', (remoteStream) => {
-                        // if client somehow sends stream, but we don't use.
-                    });
                 });
 
                 peer.on('error', (err) => {
@@ -447,61 +769,51 @@
                 });
             }
 
-            // ---------- CLIENT AUTO JOIN ----------
-            function autoJoinClient() {
-                isHost = false;
-                connectionStatus.innerText = '🟡 connecting...';
-                peer = new Peer({ config: ICE_CONFIG, debug: 1 });
-                monitorIceState(peer, iceState, stateDot);
-
-                peer.on('open', (id) => {
-                    myPeerId = id;
-                    connectionStatus.innerText = '✅ connected, joining';
-                    const conn = peer.connect(sessionId, { reliable: true });
-                    clientConn = conn;
-                    setupClientConnection(conn);
-                });
-
-                peer.on('call', (call) => {
-                    // client receives screen share call from host
-                    call.answer(); // no local stream
-                    call.on('stream', (remoteStream) => {
-                        screenVideoContainer.style.display = 'flex';
-                        remoteScreenVideo.srcObject = remoteStream;
-                        stopScreenShareBtn.style.display = 'none'; // only host stops
-                        appendSystemMessage('🖥️ Host is sharing screen');
-                    });
-                    call.on('close', () => {
-                        screenVideoContainer.style.display = 'none';
-                        remoteScreenVideo.srcObject = null;
-                        appendSystemMessage('🖥️ Screen share ended');
-                    });
-                });
-
-                peer.on('error', (err) => {
-                    connectionStatus.innerText = '❌ error';
-                    appendSystemMessage('Peer error: ' + err.message);
-                });
+            // ---------- HOST data handlers ----------
+            function handleHostData(peerId, data) {
+                switch (data.type) {
+                    case 'chat': hostProcessNewMessage(peerId, data.senderName, 'chat', data.content, null, data.msgId); break;
+                    case 'file': 
+                        hostProcessNewMessage(peerId, data.senderName, 'file', data.content, data.fileInfo, data.msgId); 
+                        break;
+                    case 'ack': if (data.msgId) hostProcessAck(peerId, data.msgId); break;
+                    case 'screenShareStart':
+                        hostHandleNewScreenShare(peerId);
+                        break;
+                    case 'screenShareStop':
+                        if (activeScreenSharperId === peerId) {
+                            hostBroadcastScreenShareStop();
+                        }
+                        break;
+                }
             }
 
-            function setupClientConnection(conn) {
-                const timeout = setTimeout(() => {
-                    if (!conn.open) appendSystemMessage('⏳ Connection slow – ICE: ' + iceState.innerText);
-                }, 15000);
-                conn.on('open', () => {
-                    clearTimeout(timeout);
-                    connectionStatus.innerText = '🟢 connected';
-                    iceState.innerText = 'open';
-                    stateDot.className = 'dot active';
-                    enableChat(true);
-                    conn.send({ type: 'setUsername', username: myUsername, peerId: myPeerId });
-                    appendSystemMessage('Joined as ' + myUsername);
-                });
-                conn.on('data', handleClientData);
-                conn.on('close', () => { connectionStatus.innerText = '⚫ disconnected'; enableChat(false); });
-                conn.on('error', (e) => console.error(e));
+            function hostProcessNewMessage(senderPeerId, senderName, type, content, fileInfo = null, providedMsgId = null) {
+                if (!myPeerId) return;
+                const msgId = providedMsgId || generateUUID();
+                const msg = {
+                    id: msgId, senderId: senderPeerId, senderName: senderName || 'unknown',
+                    type: type, content: content, timestamp: Date.now()
+                };
+                if (fileInfo) msg.fileInfo = fileInfo;
+                const ackSet = new Set([senderPeerId, myPeerId]);
+                hostMessageMap.set(msgId, { msg, acks: ackSet });
+                addMessageToStore(msg, senderPeerId === myPeerId);
+                const broadcastMsg = { type: 'broadcast', msg: msg };
+                hostSendMessageToAll(broadcastMsg, senderPeerId);
             }
 
+            function hostSendMessageToAll(data, excludePeerId = null) {
+                hostConnections.forEach((conn, pid) => { if (pid !== excludePeerId && conn.open) conn.send(data); });
+            }
+            function hostProcessAck(peerId, msgId) { if (hostMessageMap.has(msgId)) hostMessageMap.get(msgId).acks.add(peerId); }
+            function hostRemovePeer(pid) { hostConnections.delete(pid); hostMessageMap.forEach(e => e.acks.delete(pid)); updatePeerCountUI(); }
+            function hostSendHistory(conn) { 
+                const all = Array.from(hostMessageMap.values()).map(e => e.msg);
+                if (all.length) conn.send({ type: 'history', messages: all });
+            }
+
+            // ---------- Client data handler (receives screen share commands from host) ----------
             function handleClientData(data) {
                 if (!data || !data.type) return;
                 switch (data.type) {
@@ -519,54 +831,52 @@
                             });
                             appendSystemMessage(`📦 loaded ${data.messages.length} messages`);
                         } break;
-                }
-            }
-
-            function handleHostData(peerId, data) {
-                switch (data.type) {
-                    case 'chat': hostProcessNewMessage(peerId, data.senderName, 'chat', data.content, null, data.msgId); break;
-                    case 'image': // fallback for legacy
-                    case 'file': 
-                        hostProcessNewMessage(peerId, data.senderName, 'file', data.content, data.fileInfo, data.msgId); 
+                    case 'screenShareStart':
+                        if (data.sharerPeerId && data.sharerPeerId !== myPeerId) {
+                            appendSystemMessage(`📺 ${data.sharerPeerId.substring(0,6)} started screen share – receiving stream...`);
+                        }
                         break;
-                    case 'ack': if (data.msgId) hostProcessAck(peerId, data.msgId); break;
+                    case 'screenShareStop':
+                        if (isViewingScreen) {
+                            screenVideoContainer.style.display = 'none';
+                            remoteScreenVideo.srcObject = null;
+                            isViewingScreen = false;
+                        }
+                        break;
+                    case 'screenShareInitiate':
+                        // I am the SHARER (client) – host tells me to call these viewers
+                        if (data.viewers && Array.isArray(data.viewers) && localScreenShareStream) {
+                            data.viewers.forEach(viewerId => {
+                                try {
+                                    const call = peer.call(viewerId, localScreenShareStream);
+                                    screenShareCalls.push(call);
+                                    call.on('close', () => {
+                                        screenShareCalls = screenShareCalls.filter(c => c !== call);
+                                    });
+                                    call.on('error', (err) => console.error('Sharer call error:', err));
+                                } catch (err) {
+                                    console.error('Failed to call viewer:', viewerId, err);
+                                }
+                            });
+                        }
+                        break;
+                    case 'screenShareAddViewer':
+                        if (data.viewerId && localScreenShareStream) {
+                            try {
+                                const call = peer.call(data.viewerId, localScreenShareStream);
+                                screenShareCalls.push(call);
+                                call.on('close', () => {
+                                    screenShareCalls = screenShareCalls.filter(c => c !== call);
+                                });
+                            } catch (err) {
+                                console.error('Failed to call new viewer:', err);
+                            }
+                        }
+                        break;
                 }
             }
 
-            function hostProcessAck(peerId, msgId) { if (hostMessageMap.has(msgId)) hostMessageMap.get(msgId).acks.add(peerId); }
-            function hostRemovePeer(pid) { hostConnections.delete(pid); hostMessageMap.forEach(e => e.acks.delete(pid)); updatePeerCountUI(); }
-            function hostSendHistory(conn) { 
-                const all = Array.from(hostMessageMap.values()).map(e => e.msg);
-                if (all.length) conn.send({ type: 'history', messages: all });
-            }
-
-            // ---------- SEND FILE (instead of image) ----------
-            function sendFile(file, base64Data) {
-                const senderName = usernameInput.value.trim() || 'Anonymous';
-                const msgId = generateUUID();
-                const fileInfo = {
-                    name: file.name,
-                    size: file.size,
-                    type: file.type || 'application/octet-stream'
-                };
-                if (isHost) {
-                    hostProcessNewMessage(myPeerId, senderName, 'file', base64Data, fileInfo, msgId);
-                } else {
-                    if (clientConn?.open) {
-                        clientConn.send({
-                            type: 'file',
-                            content: base64Data,
-                            senderName: senderName,
-                            fileInfo: fileInfo,
-                            msgId: msgId
-                        });
-                        // local echo
-                        const tempMsg = { id: msgId, senderId: myPeerId, senderName, type: 'file', content: base64Data, fileInfo, timestamp: Date.now() };
-                        addMessageToStore(tempMsg, true);
-                    }
-                }
-            }
-
+            // ---------- Send message / file ----------
             function sendChatMessage(text) {
                 if (!text.trim()) return;
                 const senderName = usernameInput.value.trim() || 'Anonymous';
@@ -577,6 +887,21 @@
                     if (clientConn?.open) {
                         clientConn.send({ type: 'chat', content: text, senderName, msgId });
                         const tempMsg = { id: msgId, senderId: myPeerId, senderName, type: 'chat', content: text, timestamp: Date.now() };
+                        addMessageToStore(tempMsg, true);
+                    }
+                }
+            }
+
+            function sendFile(file, base64Data) {
+                const senderName = usernameInput.value.trim() || 'Anonymous';
+                const msgId = generateUUID();
+                const fileInfo = { name: file.name, size: file.size, type: file.type || 'application/octet-stream' };
+                if (isHost) {
+                    hostProcessNewMessage(myPeerId, senderName, 'file', base64Data, fileInfo, msgId);
+                } else {
+                    if (clientConn?.open) {
+                        clientConn.send({ type: 'file', content: base64Data, senderName, fileInfo, msgId });
+                        const tempMsg = { id: msgId, senderId: myPeerId, senderName, type: 'file', content: base64Data, fileInfo, timestamp: Date.now() };
                         addMessageToStore(tempMsg, true);
                     }
                 }
@@ -616,7 +941,7 @@
             document.getElementById('hostChatBtn').addEventListener('click', hostSession);
             copyRoomLinkBtn.addEventListener('click', () => navigator.clipboard.writeText(roomLinkDisplay.innerText).then(() => alert('Room link copied')));
 
-            // 📎 DOCUMENT SHARE (replaces image)
+            // Document share
             documentUpload.addEventListener('change', function(e) {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -625,16 +950,37 @@
                 reader.readAsDataURL(file);
             });
 
-            // screen share button (host only)
+            // Screen share: anyone can start
             screenShareBtn.addEventListener('click', function() {
-                if (isHost && !isSharingScreen) startScreenShare();
+                startScreenShare();
             });
-            stopScreenShareBtn.addEventListener('click', function() { stopScreenShare(); });
 
+            // Stop sharing button (only visible when I am sharing)
+            stopScreenShareBtn.addEventListener('click', function() {
+                stopMyScreenShare();
+            });
+
+            // Send message
             sendBtn.addEventListener('click', () => { sendChatMessage(messageInput.value); messageInput.value = ''; });
             messageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !sendBtn.disabled) { sendChatMessage(messageInput.value); messageInput.value = ''; } });
 
-            // URL init
+            // Manual retry button
+            retryManualBtn.addEventListener('click', function() {
+                if (isHost) {
+                    if (peer) peer.destroy();
+                    hostConnections.clear();
+                    hostSession();
+                } else {
+                    if (peer) peer.destroy();
+                    clientConn = null;
+                    isConnecting = false;
+                    manualRetry = true;
+                    const selectedIdx = parseInt(iceProfileSelect.value, 10);
+                    attemptClientConnectionWithProfile(selectedIdx);
+                }
+            });
+
+            // ---------- URL init ----------
             function initFromUrl() {
                 const urlSession = getUrlParam('session');
                 if (urlSession) {
