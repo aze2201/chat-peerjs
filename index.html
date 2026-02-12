@@ -2,159 +2,200 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔗 Shareable WebRTC Chat · STUN + TURN</title>
-    <!-- PeerJS for easy signaling (public server) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>📡 GroupChat · STUN/TURN · image + ack sync</title>
+    <!-- PeerJS for signaling & multi-peer -->
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
+        /* Mobile first, responsive */
         * {
             box-sizing: border-box;
-            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            background: radial-gradient(circle at 20% 30%, #f0f5fb, #d9e2ef);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: radial-gradient(circle at 10% 30%, #d4e0ec, #b6c8d9);
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
+            padding: 12px;
         }
 
-        .card {
-            max-width: 950px;
+        .app {
+            max-width: 1000px;
             width: 100%;
             background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(12px);
-            border-radius: 40px;
-            box-shadow: 0 25px 45px rgba(0, 20, 40, 0.2);
-            padding: 30px;
-            border: 1px solid rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 36px;
+            box-shadow: 0 20px 40px rgba(0,20,40,0.25);
+            padding: 24px 20px;
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+
+        .header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
         }
 
         h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #0b2d4b;
+            letter-spacing: -0.5px;
             display: flex;
             align-items: center;
-            gap: 12px;
-            font-weight: 600;
-            font-size: 1.9rem;
-            color: #13294b;
-            margin-top: 0;
-            margin-bottom: 8px;
+            gap: 8px;
         }
 
-        .sub {
-            color: #2c4c6b;
-            margin-bottom: 30px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid rgba(69, 123, 157, 0.2);
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .ice-tag {
-            background: #1e3f5c;
+        .ice-badge {
+            background: #1f4a6b;
             color: white;
+            padding: 6px 16px;
             border-radius: 50px;
-            padding: 6px 18px;
-            font-size: 0.8rem;
-            font-weight: 500;
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
         }
 
-        .session-panel {
+        .username-panel {
             background: white;
-            border-radius: 28px;
-            padding: 25px;
-            box-shadow: inset 0 2px 5px rgba(0,0,0,0.02), 0 8px 20px rgba(46, 91, 136, 0.1);
-            margin-bottom: 25px;
-        }
-
-        .link-area {
+            border-radius: 60px;
+            padding: 10px 18px;
+            margin-bottom: 20px;
             display: flex;
-            gap: 12px;
-            align-items: center;
             flex-wrap: wrap;
-            margin: 15px 0;
+            align-items: center;
+            gap: 12px;
+            border: 1px solid #b6d0e2;
+            box-shadow: inset 0 1px 4px rgba(0,0,0,0.02);
         }
 
-        .session-input {
+        .username-panel label {
+            font-weight: 600;
+            color: #1f4973;
+            font-size: 0.95rem;
+        }
+
+        #usernameInput {
             flex: 1;
-            padding: 16px 22px;
-            border: 2px solid #bdd4e2;
+            min-width: 180px;
+            padding: 12px 18px;
+            border: 1.5px solid #c9daea;
             border-radius: 50px;
             font-size: 1rem;
-            background: #fafdff;
-            transition: 0.2s;
+            background: #f9fcff;
             outline: none;
-            font-weight: 450;
+            transition: 0.2s;
         }
 
-        .session-input:focus {
-            border-color: #1f6194;
-            box-shadow: 0 0 0 4px rgba(31, 97, 148, 0.1);
+        #usernameInput:focus {
+            border-color: #2a6c9e;
+            box-shadow: 0 0 0 3px rgba(42,108,158,0.15);
         }
 
-        button {
-            background: #1f3f5f;
+        .section {
+            background: rgba(255,255,255,0.5);
+            border-radius: 28px;
+            padding: 22px 18px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.7);
+        }
+
+        .flex-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .btn {
+            background: #1e3f5f;
             border: none;
             color: white;
-            padding: 14px 28px;
+            padding: 12px 24px;
             border-radius: 50px;
             font-weight: 600;
             font-size: 0.95rem;
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 10px;
+            justify-content: center;
+            gap: 8px;
             cursor: pointer;
             transition: 0.2s;
-            border: 1px solid rgba(255,255,255,0.3);
-            box-shadow: 0 6px 14px rgba(0,30,60,0.15);
-            letter-spacing: 0.3px;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 6px 12px rgba(0,30,60,0.1);
+            flex: 0 0 auto;
         }
 
-        button:hover {
-            background: #2d567a;
-            transform: scale(0.98);
+        .btn:hover {
+            background: #2d5b7c;
+            transform: scale(0.97);
         }
 
-        button:disabled {
-            opacity: 0.5;
+        .btn:disabled {
+            opacity: 0.45;
             pointer-events: none;
-            background: #738fa7;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid #1e3f5f;
+            color: #1e3f5f;
+            box-shadow: none;
+        }
+
+        .link-box {
+            background: #e2ebf3;
+            padding: 14px 18px;
+            border-radius: 40px;
+            word-break: break-all;
+            font-size: 0.9rem;
+            border: 1px solid #a0bedb;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 12px;
         }
 
         .chat-container {
-            background: #eaf0f8;
-            border-radius: 30px;
-            padding: 20px;
-            margin-top: 20px;
+            background: #f2f7fd;
+            border-radius: 28px;
+            padding: 18px;
+            margin-top: 8px;
+            border: 1px solid #ccdcec;
         }
 
         .messages {
             background: white;
             border-radius: 24px;
-            padding: 20px;
-            height: 260px;
+            padding: 18px;
+            height: 300px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            border: 1px solid #d0dfec;
-            margin-bottom: 18px;
+            gap: 12px;
+            margin-bottom: 16px;
+            border: 1px solid #d6e2ec;
         }
 
         .message {
-            background: #f1f7fd;
+            background: #f0f6fc;
             padding: 12px 18px;
             border-radius: 22px;
+            max-width: 90%;
             word-break: break-word;
-            max-width: 80%;
             align-self: flex-start;
-            border: 1px solid #dbe5ed;
+            border: 1px solid #dbe2ea;
             font-size: 0.95rem;
+            line-height: 1.4;
         }
 
         .message.self {
@@ -166,165 +207,187 @@
 
         .message.system {
             background: transparent;
-            color: #4f687f;
+            color: #3c627c;
             align-self: center;
             font-size: 0.8rem;
-            border: 1px dashed #8da3b6;
+            border: 1px dashed #8da9c2;
+            max-width: 95%;
         }
 
-        .input-area {
+        .message img {
+            max-width: 180px;
+            max-height: 180px;
+            border-radius: 16px;
+            display: block;
+            margin-top: 6px;
+            border: 1px solid #ccc;
+        }
+
+        .input-row {
             display: flex;
-            gap: 12px;
+            flex-wrap: wrap;
             align-items: center;
+            gap: 10px;
         }
 
-        .chat-input {
+        #messageInput {
             flex: 1;
+            min-width: 180px;
             padding: 14px 20px;
-            border: 2px solid #c3d6e5;
-            border-radius: 40px;
-            font-size: 0.95rem;
+            border: 2px solid #c6d9e8;
+            border-radius: 50px;
+            font-size: 1rem;
             background: white;
             outline: none;
         }
 
-        .chat-input:focus {
+        #messageInput:focus {
             border-color: #2b6990;
         }
 
-        .status {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.85rem;
-            color: #1f4a64;
-            margin-top: 8px;
-            padding: 8px 12px;
-            background: rgba(255,255,255,0.6);
+        .file-label {
+            background: #edf4fa;
+            padding: 12px 18px;
             border-radius: 50px;
+            font-size: 1.1rem;
+            border: 1px solid #acc3d9;
+            cursor: pointer;
+            color: #1e3f5f;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
 
-        .dot {
-            width: 11px;
-            height: 11px;
-            border-radius: 50%;
-            background: #95adbc;
-        }
-
-        .dot.active {
-            background: #28a745;
-            box-shadow: 0 0 10px #28a745;
-        }
-
-        .footer {
-            margin-top: 25px;
-            text-align: center;
-            color: #3f5e74;
-            font-size: 0.8rem;
-        }
-
-        .hidden {
+        #imageUpload {
             display: none;
         }
 
-        .flex-row {
+        .status-bar {
             display: flex;
             flex-wrap: wrap;
             align-items: center;
             justify-content: space-between;
+            margin-top: 12px;
+            font-size: 0.8rem;
+            color: #1e4e6c;
+            background: rgba(255,255,255,0.7);
+            padding: 10px 18px;
+            border-radius: 50px;
         }
 
-        .share-link {
-            background: #e2ecf5;
-            padding: 10px 18px;
-            border-radius: 30px;
-            font-size: 0.9rem;
-            word-break: break-all;
-            font-weight: 500;
-            color: #0f3b5c;
-            border: 1px solid #aac2d3;
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #9eb7c9;
+            display: inline-block;
+            margin-right: 6px;
+        }
+
+        .dot.active {
+            background: #28a745;
+            box-shadow: 0 0 12px #28a745;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .peer-count {
+            background: #1f3f5f;
+            color: white;
+            padding: 4px 14px;
+            border-radius: 50px;
+            font-size: 0.75rem;
+        }
+
+        @media (max-width: 600px) {
+            .app { padding: 16px; }
+            h1 { font-size: 1.5rem; }
+            .btn { padding: 10px 18px; }
         }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>
-            <span>📎 PeerChat</span>
-            <span style="font-size: 0.9rem; background: #d4e3fd; padding: 6px 14px; border-radius: 30px; color: #0e3b5a;">STUN/TURN ready</span>
-        </h1>
-        <div class="sub">
-            <span>🔧 Google STUN + openrelay TURN</span>
-            <span class="ice-tag">⚡ public PeerJS signaling</span>
+    <div class="app" id="app">
+
+        <!-- HEADER with STUN/TURN info -->
+        <div class="header">
+            <h1>👥 ShareChat <span style="font-size: 0.8rem; background: #cde1f0; padding: 4px 12px; border-radius: 40px; color: #0d3a5a;">ack sync</span></h1>
+            <span class="ice-badge">⚡ Google STUN + TURN</span>
         </div>
 
-        <!-- ========== SESSION MANAGEMENT ========== -->
-        <div class="session-panel" id="sessionPanel">
-            <div style="display: flex; gap: 12px; align-items: baseline; margin-bottom: 10px;">
-                <span style="background: #1e3b5a; color: white; padding: 5px 14px; border-radius: 50px; font-size: 0.8rem;">1️⃣ CREATE OR JOIN</span>
-                <span style="color: #2c4e6c;">shareable link with session ID</span>
-            </div>
+        <!-- GLOBAL USERNAME (always visible) -->
+        <div class="username-panel">
+            <label>👤 Name</label>
+            <input type="text" id="usernameInput" placeholder="Your nickname" value="Guest" autocomplete="off">
+        </div>
 
-            <!-- No session param: show generator -->
-            <div id="generatorView">
+        <!-- ========== PRE-CHAT: SESSION CREATION (only if no session in URL) ========= -->
+        <div id="preChatSection">
+            <div id="generatorView" class="section">
+                <div style="margin-bottom: 16px; font-weight: 600; color: #1f4973;">🚀 Start new room</div>
                 <div class="flex-row">
-                    <h3 style="margin: 5px 0; color: #1f4460;">✨ Start a new chat</h3>
+                    <input type="text" id="customSessionId" class="flex-row" placeholder="room name (optional)" style="flex:1; padding: 14px 20px; border-radius: 60px; border: 1.5px solid #b8d0df; background: white; font-size:1rem;">
+                    <button id="generateBtn" class="btn">🔗 Generate link</button>
                 </div>
-                <div class="link-area">
-                    <input type="text" id="customSessionId" class="session-input" placeholder="enter custom session name (optional)" value="">
-                    <button id="generateBtn">🔗 Generate link</button>
+                <!-- generated link + host -->
+                <div id="linkOutput" style="display: none;" class="link-box">
+                    <span id="shareableLink" style="font-weight: 500; word-break: break-all;"></span>
+                    <button id="copyLinkBtn" style="background: transparent; border: none; font-size: 1.4rem; cursor: pointer; padding: 6px;" title="copy">📋</button>
                 </div>
-                <div id="linkOutput" style="display: none;">
-                    <p style="margin-bottom: 8px; font-weight: 600; color: #1f4973;">📋 Share this link:</p>
-                    <div class="flex-row">
-                        <code id="shareableLink" class="share-link"></code>
-                        <button id="copyLinkBtn" style="padding: 10px 20px; margin-left: 10px;">📋 Copy</button>
-                    </div>
-                    <div style="margin-top: 25px; background: #ecf3fa; border-radius: 24px; padding: 15px;">
-                        <p style="margin: 0 0 10px 0; font-weight: 600;">👉 Then click here to host:</p>
-                        <button id="hostChatBtn" style="background: #225a7a; padding: 14px 30px;">🎤 Host this session (wait for peer)</button>
-                        <span style="margin-left: 15px; color: #3e6b89; font-size: 0.9rem;">you'll be the offerer</span>
-                    </div>
+                <div style="margin-top: 20px;">
+                    <button id="hostChatBtn" class="btn" style="background: #225a7a; padding: 14px 32px;">🎤 Host this room</button>
+                    <span style="margin-left: 12px; color: #326480; font-size: 0.9rem;">(you'll be the hub)</span>
                 </div>
-            </div>
-
-            <!-- Session param exists: show join view automatically -->
-            <div id="joinView" style="display: none;">
-                <h3 style="color: #1f4460; margin-top: 0;">🔌 Joining session</h3>
-                <p>Session ID: <strong id="sessionIdDisplay"></strong></p>
-                <button id="connectAsClientBtn" style="background: #2a5f73; padding: 16px 30px; font-size: 1.1rem;">📞 Connect to host</button>
-                <div id="autoConnectHint" style="margin-top: 15px; color: #2e6279;"></div>
             </div>
         </div>
 
-        <!-- ========== CHAT INTERFACE (hidden until connected) ========== -->
-        <div id="chatInterface" class="chat-container hidden">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                <span id="chatRoomLabel" style="font-weight: 600; background: #cedce8; padding: 6px 18px; border-radius: 50px; font-size: 0.85rem;">💬 session: <span id="currentSessionLabel">-</span></span>
-                <span id="connectionStatusBadge" style="background: #1e3b5a; color: white; padding: 6px 18px; border-radius: 50px; font-size: 0.8rem;">⚙️ connecting..</span>
+        <!-- ========== CHAT INTERFACE (hidden until host/client starts) ========= -->
+        <div id="chatInterface" class="hidden">
+            <!-- room info: session link always shown for host & clients -->
+            <div id="sessionLinkContainer" style="background: #e4edf5; border-radius: 40px; padding: 12px 20px; margin-bottom: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+                <span style="font-weight: 600;">🔗 room:</span>
+                <span id="roomLinkDisplay" style="word-break: break-all; font-size: 0.8rem; background: white; padding: 6px 16px; border-radius: 50px;"></span>
+                <button id="copyRoomLinkBtn" style="background: white; border: 1px solid #5f8da0; padding: 6px 16px; border-radius: 40px; font-size: 0.8rem;">📋 copy</button>
             </div>
-            <div class="messages" id="messageLog">
-                <div class="message system">🟢 Welcome. Once connected, you can chat.</div>
-            </div>
-            <div class="input-area">
-                <input type="text" id="messageInput" class="chat-input" placeholder="Type a message..." autocomplete="off" disabled>
-                <button id="sendBtn" disabled style="padding: 14px 28px;">📤 Send</button>
-            </div>
-            <div class="status" id="iceStatus">
-                <span class="dot" id="stateDot"></span> ICE: <span id="iceStateText">waiting</span> &nbsp;|&nbsp; Peer: <span id="peerStateText">disconnected</span>
+
+            <!-- chat area -->
+            <div class="chat-container">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <span id="roomNameBadge" style="background: #cedce8; padding: 6px 18px; border-radius: 50px; font-size: 0.8rem;">📌 session: <span id="currentSessionSpan">-</span></span>
+                    <span id="connectionStatus" class="peer-count">⚙️ connecting</span>
+                </div>
+                <!-- Messages log -->
+                <div class="messages" id="messageLog">
+                    <div class="message system">🟢 Welcome. Set your name above and start chatting.</div>
+                </div>
+                <!-- Input + image -->
+                <div class="input-row">
+                    <input type="text" id="messageInput" placeholder="Type a message..." autocomplete="off" disabled>
+                    <button id="sendBtn" class="btn" disabled>📤</button>
+                    <label for="imageUpload" class="file-label" id="imageLabel">🖼️</label>
+                    <input type="file" id="imageUpload" accept="image/*" capture="environment">
+                </div>
+                <!-- Status line with ice & peer count -->
+                <div class="status-bar">
+                    <span><span class="dot" id="stateDot"></span> ICE: <span id="iceState">new</span></span>
+                    <span><span id="peerCountDisplay">👥 0</span></span>
+                </div>
             </div>
         </div>
 
-        <div class="footer">
-            ⚙️ Public STUN: Google · TURN: openrelayproject (no guarantee) · PeerJS cloud signaling<br>
-            Open this page in two different devices — host on one, join via link on the other.
+        <!-- footer -->
+        <div style="text-align: center; margin-top: 20px; color: #3f617c; font-size: 0.75rem;">
+            ⚡ Public STUN/TURN · PeerJS signaling · messages auto-synced to new members
         </div>
     </div>
 
     <script>
-        (function() {
+        (function(){
             "use strict";
 
-            // ---------- 🌍 PUBLIC ICE SERVERS (STUN / TURN) ----------
+            // ---------- 🌍 PUBLIC ICE SERVERS ----------
             const ICE_CONFIG = {
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' },
@@ -345,36 +408,49 @@
                 ]
             };
 
-            // ---------- DOM elements ----------
+            // ---------- GLOBAL STATE ----------
+            let sessionId = null;               // room identifier (from URL or generated)
+            let isHost = false;                // is this peer the host (hub)
+            let myPeerId = null;               // own PeerJS id
+            let myUsername = 'Guest';           // editable via input
+
+            // Peer and connections
+            let peer = null;
+            // HOST: stores all incoming DataConnections (peerId -> connection)
+            let hostConnections = new Map();
+            // CLIENT: single connection to host
+            let clientConn = null;
+
+            // MESSAGE STORE (local, displayed)
+            let messageStore = [];             // array of { id, senderId, senderName, type, content, timestamp }
+            let receivedMsgIds = new Set();    // deduplication
+
+            // HOST: extended message storage with acks
+            let hostMessageMap = new Map();    // messageId -> { msg, acks: Set(peerId) }
+
+            // UI elements
             const generatorView = document.getElementById('generatorView');
-            const joinView = document.getElementById('joinView');
-            const linkOutput = document.getElementById('linkOutput');
-            const customSessionInput = document.getElementById('customSessionId');
-            const generateBtn = document.getElementById('generateBtn');
-            const shareableLinkEl = document.getElementById('shareableLink');
-            const copyLinkBtn = document.getElementById('copyLinkBtn');
-            const hostChatBtn = document.getElementById('hostChatBtn');
-            const connectAsClientBtn = document.getElementById('connectAsClientBtn');
-            const sessionIdDisplay = document.getElementById('sessionIdDisplay');
+            const preChatSection = document.getElementById('preChatSection');
             const chatInterface = document.getElementById('chatInterface');
+            const usernameInput = document.getElementById('usernameInput');
             const messageLog = document.getElementById('messageLog');
             const messageInput = document.getElementById('messageInput');
             const sendBtn = document.getElementById('sendBtn');
-            const iceStateText = document.getElementById('iceStateText');
-            const peerStateText = document.getElementById('peerStateText');
+            const imageUpload = document.getElementById('imageUpload');
+            const sessionLinkContainer = document.getElementById('sessionLinkContainer');
+            const roomLinkDisplay = document.getElementById('roomLinkDisplay');
+            const copyRoomLinkBtn = document.getElementById('copyRoomLinkBtn');
+            const currentSessionSpan = document.getElementById('currentSessionSpan');
+            const connectionStatus = document.getElementById('connectionStatus');
+            const iceState = document.getElementById('iceState');
             const stateDot = document.getElementById('stateDot');
-            const currentSessionLabel = document.getElementById('currentSessionLabel');
-            const connectionStatusBadge = document.getElementById('connectionStatusBadge');
-            const autoConnectHint = document.getElementById('autoConnectHint');
+            const peerCountDisplay = document.getElementById('peerCountDisplay');
 
-            // ---------- Global state ----------
-            let peer = null;             // PeerJS instance
-            let conn = null;            // DataConnection
-            let sessionId = null;       // extracted from URL or generated
-            let isHost = false;         // is this peer the host (offerer) ?
-            let connected = false;      // data connection active
+            // ---------- Helper functions ----------
+            function generateUUID() {
+                return Date.now() + '-' + Math.random().toString(36).substring(2, 10);
+            }
 
-            // ---------- URL helpers ----------
             function getUrlParam(param) {
                 const urlParams = new URLSearchParams(window.location.search);
                 return urlParams.get(param);
@@ -383,260 +459,467 @@
             function buildSessionUrl(session) {
                 const url = new URL(window.location.href);
                 url.searchParams.set('session', session);
-                // remove any other clutter
                 return url.toString();
             }
 
-            // ---------- Initialize based on URL ----------
-            function initFromUrl() {
-                const sessionFromUrl = getUrlParam('session');
-                if (sessionFromUrl) {
-                    // session param exists → switch to join view
-                    sessionId = sessionFromUrl;
-                    generatorView.style.display = 'none';
-                    joinView.style.display = 'block';
-                    sessionIdDisplay.textContent = sessionId;
-                    currentSessionLabel.textContent = sessionId;
-                    // automatically try to connect as client? We'll let user click connect.
-                    // But we also add hint
-                    autoConnectHint.innerHTML = '🔔 Ready to join. Click the button.';
+            // Display single message in log
+            function displayMessage(msg, isSelf = false) {
+                const msgDiv = document.createElement('div');
+                msgDiv.className = 'message' + (isSelf ? ' self' : '');
+                msgDiv.dataset.msgId = msg.id;
+
+                let senderDisplay = msg.senderName ? msg.senderName : (msg.senderId === myPeerId ? 'You' : 'Peer');
+                if (isSelf) senderDisplay = 'You';
+
+                let contentHtml = '';
+                if (msg.type === 'image') {
+                    contentHtml = `<strong>${senderDisplay}:</strong><br><img src="${msg.content}" alt="shared image" style="max-width:180px;">`;
                 } else {
-                    // no session: show generator
-                    generatorView.style.display = 'block';
-                    joinView.style.display = 'none';
-                    chatInterface.classList.add('hidden');
+                    contentHtml = `<strong>${senderDisplay}:</strong> ${msg.content}`;
+                }
+                msgDiv.innerHTML = contentHtml;
+                messageLog.appendChild(msgDiv);
+                messageLog.scrollTop = messageLog.scrollHeight;
+            }
+
+            // Add message to store and UI (with dedup)
+            function addMessageToStore(msg, isSelf = false) {
+                if (!msg.id) msg.id = generateUUID();
+                if (receivedMsgIds.has(msg.id)) return false;
+                receivedMsgIds.add(msg.id);
+                messageStore.push(msg);
+                displayMessage(msg, isSelf);
+                return true;
+            }
+
+            // remove message by ID from store and UI (not used now, but kept)
+            function deleteMessageFromStore(msgId) {
+                messageStore = messageStore.filter(m => m.id !== msgId);
+                receivedMsgIds.delete(msgId);
+                const msgEl = document.querySelector(`.message[data-msg-id="${msgId}"]`);
+                if (msgEl) msgEl.remove();
+            }
+
+            // update peer count in UI (host only)
+            function updatePeerCountUI() {
+                if (isHost) {
+                    peerCountDisplay.innerText = `👥 ${hostConnections.size + 1}`; // + host
+                } else {
+                    peerCountDisplay.innerText = `👥 2+`; // approximate
                 }
             }
 
-            // ---------- Generate random session ID ----------
-            function generateSessionId() {
-                return 'chat-' + Math.random().toString(36).substring(2, 10) + '-' + Date.now().toString(36);
-            }
-
-            // ---------- Display generated link ----------
-            function displayGeneratedLink(session) {
-                const fullUrl = buildSessionUrl(session);
-                shareableLinkEl.textContent = fullUrl;
-                linkOutput.style.display = 'block';
-                // store session id for later hosting
-                sessionId = session;
-                currentSessionLabel.textContent = session; // for later chat
-            }
-
-            // ---------- HOST: create Peer with ID = sessionId ----------
-            function hostSession() {
-                if (!sessionId) {
-                    alert('Generate a session first');
-                    return;
-                }
-                isHost = true;
-                // Hide session panels, show chat
-                generatorView.style.display = 'none';
-                joinView.style.display = 'none';
-                chatInterface.classList.remove('hidden');
-                connectionStatusBadge.innerHTML = '⏳ Host: creating peer...';
-                appendSystemMessage('Starting host session: waiting for peer to join...');
-
-                // Initialize Peer as host (using fixed ID)
-                peer = new Peer(sessionId, {
-                    config: ICE_CONFIG,
-                    debug: 1      // minimal logs
-                });
-
-                peer.on('open', (id) => {
-                    appendSystemMessage(`✅ Host ready. Peer ID: ${id}`);
-                    connectionStatusBadge.innerHTML = `🎤 Hosting (${id})`;
-                    updateIceStatus('listening', 'waiting');
-                });
-
-                peer.on('connection', (incomingConn) => {
-                    conn = incomingConn;
-                    setupDataConnection(conn);
-                    appendSystemMessage('🔗 Peer joined! Data channel established.');
-                });
-
-                peer.on('error', (err) => {
-                    console.error('Peer host error:', err);
-                    appendSystemMessage(`❌ Host error: ${err.type} - ${err.message}`);
-                    if (err.type === 'unavailable-id') {
-                        appendSystemMessage('⚠️ Session ID already taken? Try a different one.');
+            // ---------- HOST SPECIFIC LOGIC ----------
+            function hostSendMessageToAll(data, excludePeerId = null) {
+                hostConnections.forEach((conn, peerId) => {
+                    if (peerId !== excludePeerId && conn.open) {
+                        conn.send(data);
                     }
                 });
             }
 
-            // ---------- CLIENT: connect to host session ----------
-            function joinSession() {
-                if (!sessionId) return;
-                isHost = false;
-                // Hide panels, show chat
-                generatorView.style.display = 'none';
-                joinView.style.display = 'none';
-                chatInterface.classList.remove('hidden');
-                connectionStatusBadge.innerHTML = '⏳ Connecting to host...';
-                appendSystemMessage(`🔎 Joining session: ${sessionId}`);
+            // Host processes a new message (from client or self) - with optional msgId
+            function hostProcessNewMessage(senderPeerId, senderName, type, content, providedMsgId = null) {
+                // 🛡️ Guard: if host's own peerId is not yet set, cannot process
+                if (!myPeerId) {
+                    console.warn('hostProcessNewMessage: myPeerId not ready');
+                    appendSystemMessage('⚠️ Cannot send: host not fully initialized');
+                    return;
+                }
+                const msgId = providedMsgId || generateUUID();
+                const timestamp = Date.now();
+                const msg = {
+                    id: msgId,
+                    senderId: senderPeerId,
+                    senderName: senderName || 'unknown',
+                    type: type,
+                    content: content,
+                    timestamp: timestamp
+                };
+                // Store in host map with acks: initially sender and host itself have it
+                const ackSet = new Set();
+                ackSet.add(senderPeerId);
+                ackSet.add(myPeerId);    // host also has the message
+                hostMessageMap.set(msgId, { msg, acks: ackSet });
 
-                // Create random peer ID for client (no conflict)
+                // Add to host's own message store
+                if (senderPeerId !== myPeerId) {
+                    addMessageToStore(msg, false);
+                } else {
+                    addMessageToStore(msg, true);
+                }
+
+                // Broadcast to all connected clients (excluding sender)
+                const broadcastMsg = { type: 'broadcast', msg: msg };
+                hostSendMessageToAll(broadcastMsg, senderPeerId);
+            }
+
+            // Host sends full history to a newly connected peer
+            function hostSendHistory(conn, targetPeerId) {
+                const allMessages = Array.from(hostMessageMap.values()).map(item => item.msg);
+                if (allMessages.length === 0) return;
+                const historyPacket = { type: 'history', messages: allMessages };
+                conn.send(historyPacket);
+            }
+
+            // Process ack from client (for future use - auto-delete disabled for now)
+            function hostProcessAck(peerId, msgId) {
+                // Auto-delete feature is disabled to prevent messages from disappearing.
+                // Messages are kept indefinitely and synced to new peers.
+                if (hostMessageMap.has(msgId)) {
+                    const entry = hostMessageMap.get(msgId);
+                    entry.acks.add(peerId);
+                }
+            }
+
+            // Remove disconnected peer from acks and connections
+            function hostRemovePeer(peerId) {
+                hostConnections.delete(peerId);
+                // remove peerId from all ack sets (no deletion triggered)
+                hostMessageMap.forEach((entry, msgId) => {
+                    entry.acks.delete(peerId);
+                });
+                updatePeerCountUI();
+            }
+
+            // ---------- INIT & URL DETECTION (auto-join) ----------
+            function initFromUrl() {
+                const urlSession = getUrlParam('session');
+                if (urlSession) {
+                    sessionId = urlSession;
+                    // switch to chat UI, auto-connect as client
+                    preChatSection.classList.add('hidden');
+                    chatInterface.classList.remove('hidden');
+                    currentSessionSpan.innerText = sessionId;
+                    const fullLink = buildSessionUrl(sessionId);
+                    roomLinkDisplay.innerText = fullLink;
+                    // set default username
+                    const defaultName = 'Guest_' + Math.random().toString(36).substring(2, 6);
+                    usernameInput.value = defaultName;
+                    myUsername = defaultName;
+                    // auto-connect as client
+                    autoJoinClient();
+                } else {
+                    preChatSection.classList.remove('hidden');
+                    chatInterface.classList.add('hidden');
+                }
+            }
+
+            // AUTO CLIENT JOIN (when session in URL)
+            function autoJoinClient() {
+                isHost = false;
+                connectionStatus.innerText = '🟡 connecting...';
                 peer = new Peer({
                     config: ICE_CONFIG,
                     debug: 1
                 });
-
                 peer.on('open', (id) => {
-                    appendSystemMessage(`✅ Client peer ready: ${id}`);
-                    connectionStatusBadge.innerHTML = `📱 Client (${id})`;
-                    // Connect to host
-                    conn = peer.connect(sessionId, {
-                        reliable: true
-                    });
-                    setupDataConnection(conn);
+                    myPeerId = id;
+                    connectionStatus.innerText = '✅ connected, joining room';
+                    const conn = peer.connect(sessionId, { reliable: true });
+                    clientConn = conn;
+                    setupClientConnection(conn);
                 });
-
                 peer.on('error', (err) => {
-                    console.error('Client peer error:', err);
-                    appendSystemMessage(`❌ Client error: ${err.type}`);
+                    connectionStatus.innerText = '❌ error';
+                    appendSystemMessage('Peer error: ' + err.type);
                 });
             }
 
-            // ---------- Setup data channel events (both sides) ----------
-            function setupDataConnection(dataConn) {
-                conn = dataConn;
-
+            // Setup client's data connection
+            function setupClientConnection(conn) {
                 conn.on('open', () => {
-                    connected = true;
-                    appendSystemMessage('🎉 Data channel open! You can now send messages.');
-                    connectionStatusBadge.innerHTML = '🟢 Connected';
+                    connectionStatus.innerText = '🟢 connected';
+                    iceState.innerText = 'open';
+                    stateDot.className = 'dot active';
                     enableChat(true);
-                    updateIceStatus(peer?.iceConnectionState || 'connected', 'open');
+                    // send username to host
+                    conn.send({ type: 'setUsername', username: myUsername, peerId: myPeerId });
+                    appendSystemMessage('Joined room as ' + myUsername);
                 });
-
                 conn.on('data', (data) => {
-                    // Received message from other peer
-                    appendMessage(`👤 Peer: ${data}`, false);
+                    handleClientData(data);
                 });
-
                 conn.on('close', () => {
-                    connected = false;
-                    appendSystemMessage('🔻 Connection closed.');
+                    connectionStatus.innerText = '⚫ disconnected';
                     enableChat(false);
-                    updateIceStatus('closed', 'closed');
-                    connectionStatusBadge.innerHTML = '⚫ Disconnected';
                 });
+            }
 
-                conn.on('error', (err) => {
-                    appendSystemMessage(`⚠️ Connection error: ${err}`);
-                });
-
-                // also listen to peer connection state
-                if (peer) {
-                    peer.on('disconnected', () => {
-                        updateIceStatus(peer.iceConnectionState || 'disconnected', 'disconnected');
-                    });
+            // Client handles incoming messages
+            function handleClientData(data) {
+                if (!data || !data.type) return;
+                switch (data.type) {
+                    case 'broadcast':
+                        if (data.msg) {
+                            const isSelf = (data.msg.senderId === myPeerId);
+                            if (addMessageToStore(data.msg, isSelf)) {
+                                // send ack to host
+                                if (clientConn && clientConn.open) {
+                                    clientConn.send({ type: 'ack', msgId: data.msg.id });
+                                }
+                            }
+                        }
+                        break;
+                    case 'history':
+                        if (data.messages && Array.isArray(data.messages)) {
+                            data.messages.forEach(msg => {
+                                if (!receivedMsgIds.has(msg.id)) {
+                                    addMessageToStore(msg, msg.senderId === myPeerId);
+                                    if (clientConn && clientConn.open) {
+                                        clientConn.send({ type: 'ack', msgId: msg.id });
+                                    }
+                                }
+                            });
+                            appendSystemMessage(`📦 history loaded (${data.messages.length} messages)`);
+                        }
+                        break;
+                    case 'delete':
+                        // Auto-delete disabled – ignoring delete commands
+                        break;
+                    default: break;
                 }
             }
 
-            // ---------- Enable/disable chat controls ----------
-            function enableChat(enabled) {
-                messageInput.disabled = !enabled;
-                sendBtn.disabled = !enabled;
-                if (enabled) messageInput.focus();
+            // ---------- HOST SETUP ----------
+            function hostSession() {
+                if (!sessionId) {
+                    alert('Generate a session link first');
+                    return;
+                }
+                isHost = true;
+                myUsername = usernameInput.value.trim() || 'Host';
+                preChatSection.classList.add('hidden');
+                chatInterface.classList.remove('hidden');
+                currentSessionSpan.innerText = sessionId;
+                const fullLink = buildSessionUrl(sessionId);
+                roomLinkDisplay.innerText = fullLink;
+
+                peer = new Peer(sessionId, {
+                    config: ICE_CONFIG,
+                    debug: 1
+                });
+                peer.on('open', (id) => {
+                    myPeerId = id;
+                    connectionStatus.innerText = '🎤 Hosting';
+                    iceState.innerText = 'listening';
+                    stateDot.className = 'dot';
+                    // ✅ Enable chat for host immediately
+                    enableChat(true);
+                    appendSystemMessage('Host ready. Share link and wait for peers.');
+                });
+
+                peer.on('connection', (conn) => {
+                    const remotePeerId = conn.peer;
+                    hostConnections.set(remotePeerId, conn);
+                    updatePeerCountUI();
+                    appendSystemMessage(`➕ peer joined: ${remotePeerId.substring(0,6)}...`);
+                    
+                    // Update ICE status to connected (at least one peer)
+                    iceState.innerText = 'connected';
+                    stateDot.className = 'dot active';
+
+                    conn.on('data', (data) => {
+                        handleHostData(remotePeerId, data);
+                    });
+                    conn.on('close', () => {
+                        hostRemovePeer(remotePeerId);
+                        appendSystemMessage(`➖ peer left: ${remotePeerId.substring(0,6)}...`);
+                        // If no peers left, revert ICE status to listening
+                        if (hostConnections.size === 0) {
+                            iceState.innerText = 'listening';
+                            stateDot.className = 'dot';
+                        }
+                    });
+                    // send history to new peer
+                    hostSendHistory(conn, remotePeerId);
+                });
+
+                // Also listen for iceconnectionstate changes on host peer
+                peer.on('iceconnectionstatechange', () => {
+                    if (peer.iceConnectionState === 'connected' || peer.iceConnectionState === 'completed') {
+                        iceState.innerText = 'connected';
+                        stateDot.className = 'dot active';
+                    } else if (peer.iceConnectionState === 'disconnected' || peer.iceConnectionState === 'failed') {
+                        iceState.innerText = peer.iceConnectionState;
+                        stateDot.className = 'dot';
+                    } else {
+                        iceState.innerText = peer.iceConnectionState;
+                    }
+                });
+
+                peer.on('error', (err) => {
+                    appendSystemMessage('Host error: ' + err.type);
+                });
             }
 
-            // ---------- Append message to log (non-system) ----------
-            function appendMessage(text, isSelf = false) {
-                const msgDiv = document.createElement('div');
-                msgDiv.className = 'message' + (isSelf ? ' self' : '');
-                msgDiv.textContent = text;
-                messageLog.appendChild(msgDiv);
-                messageLog.scrollTop = messageLog.scrollHeight;
+            // Host handles incoming messages from clients
+            function handleHostData(peerId, data) {
+                if (!data.type) return;
+                switch (data.type) {
+                    case 'setUsername':
+                        // we can store username mapping if needed
+                        break;
+                    case 'chat':
+                        hostProcessNewMessage(peerId, data.senderName || 'Peer', 'chat', data.content, data.msgId);
+                        break;
+                    case 'image':
+                        hostProcessNewMessage(peerId, data.senderName || 'Peer', 'image', data.content, data.msgId);
+                        break;
+                    case 'ack':
+                        if (data.msgId) hostProcessAck(peerId, data.msgId);
+                        break;
+                }
+            }
+
+            // ---------- SEND MESSAGE (client or host) ----------
+            function sendChatMessage(text) {
+                if (!text.trim()) return;
+                // 🛡️ Guard: host must have myPeerId set
+                if (isHost && !myPeerId) {
+                    appendSystemMessage('⚠️ Host not ready yet, please wait...');
+                    return;
+                }
+                const senderName = usernameInput.value.trim() || 'Anonymous';
+                const msgId = generateUUID(); // client generates ID for dedup
+                if (isHost) {
+                    // host sends directly, using its own msgId
+                    hostProcessNewMessage(myPeerId, senderName, 'chat', text, msgId);
+                } else {
+                    // client sends via host
+                    if (clientConn && clientConn.open) {
+                        clientConn.send({
+                            type: 'chat',
+                            content: text,
+                            senderName: senderName,
+                            msgId: msgId      // send ID to host
+                        });
+                        // optimistic display with the same ID
+                        const tempMsg = {
+                            id: msgId,
+                            senderId: myPeerId,
+                            senderName: senderName,
+                            type: 'chat',
+                            content: text,
+                            timestamp: Date.now()
+                        };
+                        addMessageToStore(tempMsg, true);
+                    }
+                }
+            }
+
+            // send image
+            function sendImage(base64Data) {
+                const senderName = usernameInput.value.trim() || 'Anonymous';
+                const msgId = generateUUID();
+                if (isHost) {
+                    if (!myPeerId) {
+                        appendSystemMessage('⚠️ Host not ready yet, please wait...');
+                        return;
+                    }
+                    hostProcessNewMessage(myPeerId, senderName, 'image', base64Data, msgId);
+                } else {
+                    if (clientConn && clientConn.open) {
+                        clientConn.send({
+                            type: 'image',
+                            content: base64Data,
+                            senderName: senderName,
+                            msgId: msgId
+                        });
+                        const tempMsg = {
+                            id: msgId,
+                            senderId: myPeerId,
+                            senderName: senderName,
+                            type: 'image',
+                            content: base64Data,
+                            timestamp: Date.now()
+                        };
+                        addMessageToStore(tempMsg, true);
+                    }
+                }
+            }
+
+            // ---------- UI helpers ----------
+            function enableChat(enable) {
+                messageInput.disabled = !enable;
+                sendBtn.disabled = !enable;
+                imageUpload.disabled = !enable;
+                if (enable) messageInput.focus();
             }
 
             function appendSystemMessage(text) {
                 const sysDiv = document.createElement('div');
                 sysDiv.className = 'message system';
-                sysDiv.textContent = '🔹 ' + text;
+                sysDiv.innerText = '🔹 ' + text;
                 messageLog.appendChild(sysDiv);
                 messageLog.scrollTop = messageLog.scrollHeight;
             }
 
-            // ---------- Send message ----------
-            function sendMessage() {
-                if (conn && connected && messageInput.value.trim() !== '') {
-                    const msg = messageInput.value.trim();
-                    conn.send(msg);
-                    appendMessage(`🧑‍💻 You: ${msg}`, true);
-                    messageInput.value = '';
-                }
-            }
-
-            // ---------- Update ICE / status UI ----------
-            function updateIceStatus(iceState, peerState) {
-                iceStateText.textContent = iceState || 'unknown';
-                peerStateText.textContent = peerState || 'unknown';
-                if (iceState === 'connected' || iceState === 'completed' || peerState === 'open') {
-                    stateDot.className = 'dot active';
-                } else {
-                    stateDot.className = 'dot';
-                }
-            }
-
-            // ---------- Reset UI to start over? Not strictly needed but graceful.
             // ---------- EVENT LISTENERS ----------
-            generateBtn.addEventListener('click', () => {
-                let custom = customSessionInput.value.trim();
-                let finalId;
-                if (custom) {
-                    // sanitize: PeerJS ID must not contain whitespace, etc.
-                    finalId = custom.replace(/\s+/g, '-').toLowerCase();
-                } else {
-                    finalId = generateSessionId();
-                }
-                displayGeneratedLink(finalId);
+            // Username change
+            usernameInput.addEventListener('change', function(e) {
+                myUsername = e.target.value.trim() || 'Guest';
             });
 
-            copyLinkBtn.addEventListener('click', () => {
-                navigator.clipboard.writeText(shareableLinkEl.textContent).then(() => {
-                    alert('Link copied to clipboard');
-                }).catch(() => alert('Could not copy'));
+            // Generate link (host preparation)
+            document.getElementById('generateBtn').addEventListener('click', function() {
+                let custom = document.getElementById('customSessionId').value.trim();
+                let finalId = custom ? custom.replace(/\s+/g, '-').toLowerCase() : ('room-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2,6));
+                sessionId = finalId;
+                const link = buildSessionUrl(finalId);
+                document.getElementById('shareableLink').innerText = link;
+                document.getElementById('linkOutput').style.display = 'flex';
+                currentSessionSpan.innerText = finalId;
+                roomLinkDisplay.innerText = link;
+            });
+
+            document.getElementById('copyLinkBtn').addEventListener('click', function() {
+                const link = document.getElementById('shareableLink').innerText;
+                navigator.clipboard.writeText(link);
+                alert('Link copied');
             });
 
             // Host button
-            hostChatBtn.addEventListener('click', () => {
-                if (sessionId) {
-                    hostSession();
-                } else {
-                    alert('Generate a link first');
-                }
-            });
+            document.getElementById('hostChatBtn').addEventListener('click', hostSession);
 
-            // Client connect button (when session in URL)
-            connectAsClientBtn.addEventListener('click', joinSession);
+            // Copy room link inside chat
+            copyRoomLinkBtn.addEventListener('click', function() {
+                navigator.clipboard.writeText(roomLinkDisplay.innerText);
+                alert('Room link copied');
+            });
 
             // Send message
-            sendBtn.addEventListener('click', sendMessage);
+            sendBtn.addEventListener('click', function() {
+                sendChatMessage(messageInput.value);
+                messageInput.value = '';
+            });
             messageInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter' && !sendBtn.disabled) {
-                    sendMessage();
+                    sendChatMessage(messageInput.value);
+                    messageInput.value = '';
                 }
             });
 
-            // also if chat interface becomes visible, we might want to set session label
-            // Initial call
+            // Image sharing
+            imageUpload.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    const base64 = ev.target.result;
+                    sendImage(base64);
+                    imageUpload.value = ''; // allow re-upload
+                };
+                reader.readAsDataURL(file);
+            });
+
+            // Initialize based on URL
             initFromUrl();
 
-            // if URL has session param, also set currentSessionLabel
-            if (getUrlParam('session')) {
-                currentSessionLabel.textContent = getUrlParam('session');
-            }
-
-            // additional: if somehow user wants to generate another link while in join mode? not needed.
-
-            // watch peer connection state updates
-            window.updateIceStatus = updateIceStatus; // for debugging
-
-            // Cleanup on page unload? optional
-            window.addEventListener('beforeunload', () => {
-                if (peer) peer.destroy();
-            });
+            // update peer count for host periodically
+            setInterval(() => {
+                if (isHost) updatePeerCountUI();
+            }, 1000);
         })();
     </script>
 </body>
