@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes, viewport-fit=cover">
-    <title>📡 GroupChat · Password Protected Voice Rooms</title>
+    <title>📡 GroupChat · Auto Voice Mic · Password Protected Rooms</title>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -40,14 +40,20 @@
             cursor: pointer; border: 1px solid #80d0e0; box-shadow: 0 8px 16px #00000040;
         }
         .btn:hover { background: #34879c; transform: scale(0.97); }
-        .btn-secondary { background: #1f5768; }
+        .btn-danger { background: #b33b2c; }
+        .btn-success { background: #2e8b57; }
+        .toggle-switch {
+            display: inline-flex; align-items: center; gap: 12px; background: #1b4957;
+            padding: 12px 24px; border-radius: 60px; cursor: pointer;
+        }
+        .toggle-switch input { width: 20px; height: 20px; cursor: pointer; }
 
         .link-box { background: #0d303b; padding: 16px 22px; border-radius: 60px; word-break: break-all; font-size: 1rem; border: 1px solid #4f9db2; display: flex; align-items: center; justify-content: space-between; margin-top: 16px; color: #dbf2ff; }
         #customSessionId, #hostPasswordInput { flex:1; padding: 16px 24px; border-radius: 60px; border: none; background: #1b4957; color: white; font-size: 1.1rem; border: 1px solid #30809b; }
         
         .password-modal {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);
             display: flex; align-items: center; justify-content: center;
             z-index: 1000;
         }
@@ -75,6 +81,9 @@
         .my-name-small { font-size: 0.95rem; font-weight: 600; color: #c2ecff; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
         .dot { width: 12px; height: 12px; border-radius: 50%; background: #708e96; display: inline-block; }
         .dot.active { background: #3ae03a; box-shadow: 0 0 18px #26e626; }
+        .dot.voice-active { background: #ffaa44; box-shadow: 0 0 18px #ffaa44; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        
         .three-dot-btn {
             background: #1f5768; border: none; color: white; font-size: 1.8rem; line-height: 1;
             padding: 0 12px; border-radius: 40px; cursor: pointer; border: 1px solid #6ab5c9;
@@ -104,7 +113,7 @@
         }
         .messages {
             background: #0b1c22; border-radius: 28px; padding: 22px 16px; 
-            height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px;
+            height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px;
             border: 1px solid #275f6b;
         }
         .message {
@@ -114,22 +123,28 @@
         }
         .message.self { background: #1f5d6b; align-self: flex-end; border-radius: 24px 24px 8px 24px; border: 1px solid #83d1e0; }
         .message.system { background: transparent; color: #b7e1ed; align-self: center; font-size: 0.95rem; border: 1px dashed #519faf; text-align: center; max-width: 90%; }
+        .message.voice-event { background: #2e6b5e33; border: 1px solid #ffaa44; color: #ffdd99; }
 
         .voice-call-bar {
-            background: #10333e; border-radius: 60px; padding: 8px 20px; margin-bottom: 12px;
+            background: #10333e; border-radius: 60px; padding: 12px 24px; margin-bottom: 12px;
             display: flex; align-items: center; justify-content: space-between; gap: 12px;
             border: 1px solid #358197; flex-wrap: wrap;
         }
-        .voice-status { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: #bbe6f0; }
-        .voice-controls { display: flex; gap: 8px; flex-wrap: wrap; }
-        .voice-btn {
-            background: #256579; border: none; color: white; padding: 8px 16px; border-radius: 40px;
-            font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;
-            cursor: pointer; border: 1px solid #6ac8e0;
+        .voice-status {
+            display: flex; align-items: center; gap: 12px; font-size: 1rem;
+            background: #0a2a33; padding: 8px 20px; border-radius: 40px;
         }
-        .voice-btn.active-call { background: #2e8b57; }
+        .voice-status span:first-child { color: #bbe6f0; }
+        .voice-status .status-badge { font-weight: bold; }
+        .voice-controls { display: flex; gap: 12px; flex-wrap: wrap; }
+        .voice-btn {
+            background: #256579; border: none; color: white; padding: 12px 24px; border-radius: 60px;
+            font-weight: 700; font-size: 1rem; display: inline-flex; align-items: center; gap: 10px;
+            cursor: pointer; border: 1px solid #6ac8e0; transition: all 0.2s;
+        }
+        .voice-btn.voice-active { background: #2e8b57; box-shadow: 0 0 15px #2e8b57; }
         .voice-btn.end-call { background: #b33b2c; }
-        .voice-mute { background: #4a6270; }
+        .voice-mute { background: #4a6270; padding: 12px 20px; }
         
         .input-row {
             display: flex; flex-wrap: wrap; align-items: center; gap: 8px; background: #0b2c35;
@@ -142,13 +157,12 @@
             border: 1.5px solid transparent;
         }
         #messageInput:focus { border-color: #71d0e3; }
-        #menuBtn, #voiceCallBtn {
+        #menuBtn {
             background: #1b5768; border: none; color: white; font-size: 1.6rem; line-height: 1;
             padding: 0 14px; border-radius: 40px; cursor: pointer; border: 1px solid #86d6e6;
             display: inline-flex; align-items: center; justify-content: center; height: 48px;
             min-width: 52px;
         }
-        #voiceCallBtn { font-size: 1.4rem; background: #2e6b5e; gap: 4px; }
         #shareMenu {
             display: none; position: absolute; bottom: 70px; right: 10px; background: #0e2f38;
             border-radius: 28px; padding: 14px; border: 1.5px solid #4ba6b9; z-index: 200;
@@ -171,14 +185,15 @@
         .hidden { display: none !important; }
         
         @media (max-width: 600px) {
-            .messages { height: 320px; }
-            .voice-btn { padding: 6px 12px; font-size: 0.75rem; }
+            .messages { height: 300px; }
+            .voice-btn { padding: 8px 16px; font-size: 0.85rem; }
+            .voice-status { font-size: 0.85rem; padding: 6px 12px; }
         }
     </style>
 </head>
 <body>
     <div class="app">
-        <div class="header"><h1>💬 Share<span style="color:#b3ecff;">Chat</span> · 🔐 Password Protected</h1></div>
+        <div class="header"><h1>💬 Share<span style="color:#b3ecff;">Chat</span> · 🎙️ Auto Voice Mic</h1></div>
         <div class="username-panel">
             <label>👤 Name</label>
             <input type="text" id="usernameInput" placeholder="Your nickname" value="Guest" autocomplete="off">
@@ -192,6 +207,11 @@
                 </div>
                 <div class="flex-row" style="margin-top: 16px;">
                     <input type="password" id="hostPasswordInput" placeholder="Set room password" autocomplete="off">
+                </div>
+                <div class="flex-row" style="margin-top: 16px;">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="autoVoiceToggle" checked> 🎙️ Auto-enable microphone (auto join voice)
+                    </label>
                 </div>
                 <div class="flex-row" style="margin-top: 16px;">
                     <button id="generateBtn" class="btn">🔗 Generate link</button>
@@ -217,13 +237,12 @@
 
             <div id="voiceCallBar" class="voice-call-bar">
                 <div class="voice-status">
-                    <span>🎙️ Voice</span>
-                    <span id="voiceStatusText">🔴 Offline</span>
+                    <span>🎙️ VOICE CHAT</span>
+                    <span class="status-badge" id="voiceStatusText">🔴 OFF</span>
                 </div>
                 <div class="voice-controls">
-                    <button id="startVoiceCallBtn" class="voice-btn">📞 Start Call</button>
-                    <button id="muteMicBtn" class="voice-btn voice-mute" disabled>🔇 Mute</button>
-                    <button id="endVoiceCallBtn" class="voice-btn end-call" disabled>🔴 End</button>
+                    <button id="voiceToggleBtn" class="voice-btn">🎤 Disable Mic</button>
+                    <button id="muteMicBtn" class="voice-btn voice-mute">🔇 Mute</button>
                 </div>
             </div>
 
@@ -239,6 +258,7 @@
             <div id="infoPanel" class="info-panel">
                 <div class="info-row"><span class="info-label">🔗 Room link</span><span id="roomLinkDisplayInfo" style="word-break:break-all;"></span><button id="copyRoomLinkInfoBtn" class="room-link-copy">📋 Copy</button></div>
                 <div class="info-row"><span class="info-label">🔐 Password</span><span id="roomPasswordInfo">Protected</span><button id="showPasswordBtn" class="room-link-copy" style="background:#2e7285;">👁️ Show</button></div>
+                <div class="info-row"><span class="info-label">🎙️ Auto Voice</span><span id="autoVoiceStatusInfo">Enabled</span><button id="toggleAutoVoiceInfo" class="room-link-copy">Toggle</button></div>
                 <div class="info-row"><span class="info-label">🧊 ICE profile</span><select id="iceProfileSelectInfo"></select><button id="retryManualBtnInfo">🔁 Retry</button></div>
                 <div class="info-row"><span class="info-label">👥 Active</span><span id="peerCountDisplayInfo">👤 1</span></div>
                 <div class="info-row"><span class="info-label">🆔 My Peer ID</span><span id="myPeerIdInfo">-</span></div>
@@ -247,12 +267,11 @@
 
             <div class="chat-container">
                 <div class="messages" id="messageLog">
-                    <div class="message system">🟢 Ready. Click 'Start Call' to begin voice chat.</div>
+                    <div class="message system">🎤 Microphone auto-enabled! You can talk immediately. Mute if needed.</div>
                 </div>
                 <div class="input-row">
                     <input type="text" id="messageInput" placeholder="Type a message..." autocomplete="off" disabled>
                     <input type="file" id="documentUpload" accept="*/*" style="display:none;">
-                    <button id="voiceCallBtn" title="Voice Call">🎙️</button>
                     <button id="menuBtn">⋮</button>
                     <div id="shareMenu">
                         <label for="documentUpload" class="file-label">📎 File</label>
@@ -268,33 +287,26 @@
 
     <script>
         (function(){
-            // ICE Server Profiles
             const SERVER_PROFILES = [
                 { name: "Google STUN", config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } },
                 { name: "OpenRelay TURN", config: { iceServers: [{ urls: 'turn:openrelayproject.org:3478', username: 'openrelayproject', credential: 'openrelayproject' }] } },
                 { name: "Full Combo", config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'turn:openrelayproject.org:3478', username: 'openrelayproject', credential: 'openrelayproject' }] } }
             ];
             
-            // State
             let sessionId = null, isHost = false, myPeerId = null, myUsername = 'Guest', peer = null;
-            let roomPassword = null;  // Host sets this, client must match
+            let roomPassword = null;
             let hostConnections = new Map();
             let clientConn = null;
             let isConnected = false;
-            let pendingClients = new Map(); // For storing connections before auth
+            let autoVoiceEnabled = true; // Auto-enable microphone on join
             
-            // Screen share state
-            let localScreenStream = null;
-            let screenCalls = [];
-            
-            // Voice call state
+            // Voice state - AUTO ACTIVATED on join
             let voiceActive = false;
             let localAudioStream = null;
             let voiceCalls = new Map();
             let voiceMuted = false;
             let remoteAudioElements = new Map();
             
-            // Message state
             let receivedMsgIds = new Set();
             
             // DOM Elements
@@ -310,8 +322,10 @@
             const peerCountDisplayInfo = document.getElementById('peerCountDisplayInfo');
             const roomLinkDisplayInfo = document.getElementById('roomLinkDisplayInfo');
             const roomPasswordInfo = document.getElementById('roomPasswordInfo');
+            const autoVoiceStatusInfo = document.getElementById('autoVoiceStatusInfo');
             const copyRoomLinkInfoBtn = document.getElementById('copyRoomLinkInfoBtn');
             const showPasswordBtn = document.getElementById('showPasswordBtn');
+            const toggleAutoVoiceInfo = document.getElementById('toggleAutoVoiceInfo');
             const iceProfileSelectInfo = document.getElementById('iceProfileSelectInfo');
             const retryManualBtnInfo = document.getElementById('retryManualBtnInfo');
             const voiceBitrateSelect = document.getElementById('voiceBitrateSelect');
@@ -324,20 +338,19 @@
             const fullscreenBtn = document.getElementById('fullscreenBtn');
             const menuBtn = document.getElementById('menuBtn');
             const shareMenu = document.getElementById('shareMenu');
-            const startVoiceCallBtn = document.getElementById('startVoiceCallBtn');
-            const endVoiceCallBtn = document.getElementById('endVoiceCallBtn');
+            const voiceToggleBtn = document.getElementById('voiceToggleBtn');
             const muteMicBtn = document.getElementById('muteMicBtn');
             const voiceStatusText = document.getElementById('voiceStatusText');
-            const voiceCallBtn = document.getElementById('voiceCallBtn');
             const remoteAudioContainer = document.getElementById('remoteAudioContainer');
+            const hostAutoVoiceToggle = document.getElementById('autoVoiceToggle');
             
             function generateUUID() { return Date.now() + '-' + Math.random().toString(36).substring(2, 10); }
             function getUrlParam(p) { return new URLSearchParams(window.location.search).get(p); }
             function buildSessionUrl(s) { const url = new URL(window.location.href); url.searchParams.set('session', s); return url.toString(); }
             
-            function appendSystemMessage(text) {
+            function appendSystemMessage(text, isVoiceEvent = false) {
                 const div = document.createElement('div');
-                div.className = 'message system';
+                div.className = 'message system' + (isVoiceEvent ? ' voice-event' : '');
                 div.innerText = '🔹 ' + text;
                 messageLog.appendChild(div);
                 messageLog.scrollTop = messageLog.scrollHeight;
@@ -368,11 +381,35 @@
                 }
             }
             
+            function updateVoiceUI() {
+                if (voiceActive && localAudioStream) {
+                    voiceStatusText.innerHTML = '🟢 LIVE';
+                    voiceStatusText.style.color = '#aaffaa';
+                    voiceToggleBtn.innerHTML = '🔴 Disable Mic';
+                    voiceToggleBtn.classList.add('end-call');
+                    stateDot.classList.add('voice-active');
+                    muteMicBtn.disabled = false;
+                } else {
+                    voiceStatusText.innerHTML = '🔴 OFF';
+                    voiceStatusText.style.color = '#ffaaaa';
+                    voiceToggleBtn.innerHTML = '🎤 Enable Mic';
+                    voiceToggleBtn.classList.remove('end-call');
+                    stateDot.classList.remove('voice-active');
+                    muteMicBtn.disabled = true;
+                    muteMicBtn.innerHTML = '🔇 Mute';
+                }
+            }
+            
+            function updateAutoVoiceUI() {
+                if (autoVoiceStatusInfo) {
+                    autoVoiceStatusInfo.innerText = autoVoiceEnabled ? '✅ Enabled' : '❌ Disabled';
+                }
+            }
+            
             function enableChat(enabled) {
                 messageInput.disabled = !enabled;
                 documentUpload.disabled = !enabled;
                 if (enabled && !isHost && clientConn?.open) {
-                    // Re-send username after auth success
                     clientConn.send({ type: 'setUsername', username: myUsername, peerId: myPeerId });
                 }
             }
@@ -408,61 +445,76 @@
                 }, 500);
             }
             
-            async function startVoiceCall() {
+            // AUTO-START VOICE - called when user joins room
+            async function autoStartVoice() {
+                if (!autoVoiceEnabled) {
+                    appendSystemMessage("🎙️ Auto-voice disabled. Click 'Enable Mic' to start talking.", true);
+                    return;
+                }
                 if (voiceActive) return;
+                
                 try {
+                    appendSystemMessage("🎤 Auto-enabling microphone...", true);
                     localAudioStream = await navigator.mediaDevices.getUserMedia({ 
                         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
                     });
                     voiceActive = true;
-                    voiceStatusText.innerText = "🟢 Live";
-                    startVoiceCallBtn.disabled = true;
-                    endVoiceCallBtn.disabled = false;
-                    muteMicBtn.disabled = false;
-                    startVoiceCallBtn.classList.add('active-call');
-                    voiceCallBtn.style.background = "#2e8b57";
-                    appendSystemMessage("🎙️ Voice call started");
+                    updateVoiceUI();
+                    appendSystemMessage("✅ Microphone active! You can now talk to everyone in the room.", true);
                     
                     if (isHost) {
-                        for (let [peerId, conn] of hostConnections.entries()) {
+                        // Call all existing clients
+                        for (let [peerId] of hostConnections.entries()) {
                             if (peerId !== myPeerId) {
                                 const call = peer.call(peerId, localAudioStream);
                                 voiceCalls.set(peerId, { call, audioElement: null });
                                 applyVoiceBitrate(call);
+                                appendSystemMessage(`📞 Voice connected to ${peerId.substring(0,6)}`, true);
                             }
                         }
+                        if (hostConnections.size > 0) {
+                            appendSystemMessage(`🎙️ Voice active with ${hostConnections.size} participant(s)`, true);
+                        } else {
+                            appendSystemMessage("🎙️ Voice ready - waiting for participants to join", true);
+                        }
                     } else if (clientConn && clientConn.open) {
+                        // Call host
                         const call = peer.call(sessionId, localAudioStream);
                         voiceCalls.set('host', { call, audioElement: null });
                         applyVoiceBitrate(call);
-                        call.on('close', () => { if (voiceActive) endVoiceCall(); });
+                        appendSystemMessage("📞 Connected to host voice", true);
+                        call.on('close', () => {
+                            if (voiceActive) {
+                                appendSystemMessage("📞 Host disconnected from voice", true);
+                            }
+                        });
                     }
                 } catch (err) {
-                    appendSystemMessage("❌ Microphone error: " + err.message);
-                    endVoiceCall();
+                    appendSystemMessage("❌ Microphone error: " + err.message + " - Check permissions", true);
+                    voiceActive = false;
+                    updateVoiceUI();
                 }
             }
             
-            function endVoiceCall() {
-                if (!voiceActive) return;
-                if (localAudioStream) {
-                    localAudioStream.getTracks().forEach(t => t.stop());
-                    localAudioStream = null;
+            // Disable/Enable voice manually
+            async function toggleVoiceManually() {
+                if (voiceActive && localAudioStream) {
+                    // Disable voice - stop microphone and close all calls
+                    if (localAudioStream) {
+                        localAudioStream.getTracks().forEach(t => t.stop());
+                        localAudioStream = null;
+                    }
+                    for (let data of voiceCalls.values()) {
+                        if (data.call) data.call.close();
+                    }
+                    voiceCalls.clear();
+                    voiceActive = false;
+                    updateVoiceUI();
+                    appendSystemMessage("🔴 Microphone disabled. Click 'Enable Mic' to speak again.", true);
+                } else {
+                    // Enable voice
+                    await autoStartVoice();
                 }
-                for (let data of voiceCalls.values()) {
-                    if (data.call) data.call.close();
-                }
-                voiceCalls.clear();
-                voiceActive = false;
-                voiceMuted = false;
-                voiceStatusText.innerText = "🔴 Offline";
-                startVoiceCallBtn.disabled = false;
-                endVoiceCallBtn.disabled = true;
-                muteMicBtn.disabled = true;
-                muteMicBtn.innerText = "🔇 Mute";
-                startVoiceCallBtn.classList.remove('active-call');
-                voiceCallBtn.style.background = "#1b5768";
-                appendSystemMessage("🔴 Voice call ended");
             }
             
             function toggleMute() {
@@ -471,28 +523,59 @@
                 if (audioTrack) {
                     audioTrack.enabled = !audioTrack.enabled;
                     voiceMuted = !audioTrack.enabled;
-                    muteMicBtn.innerText = voiceMuted ? "🎤 Unmute" : "🔇 Mute";
-                    appendSystemMessage(voiceMuted ? "Mic muted" : "Mic unmuted");
+                    muteMicBtn.innerHTML = voiceMuted ? "🎤 Unmute" : "🔇 Mute";
+                    appendSystemMessage(voiceMuted ? "Mic muted - others can't hear you" : "Mic unmuted", true);
                 }
             }
             
+            // AUTO-ACCEPT incoming voice calls
             function handleIncomingVoiceCall(call) {
-                const audioEl = createRemoteAudioElement(call.peer);
+                const remotePeerId = call.peer;
+                
+                const audioEl = createRemoteAudioElement(remotePeerId);
+                
                 if (localAudioStream && voiceActive) {
                     call.answer(localAudioStream);
+                    appendSystemMessage(`✅ Auto-connected to ${remotePeerId.substring(0,6)} voice`, true);
+                } else if (voiceActive) {
+                    call.answer();
+                } else if (autoVoiceEnabled) {
+                    // If auto-voice is enabled but not active yet, start it first
+                    call.answer();
+                    appendSystemMessage(`📞 Incoming voice from ${remotePeerId.substring(0,6)} - auto-joining...`, true);
+                    setTimeout(() => {
+                        if (!voiceActive) {
+                            autoStartVoice();
+                        }
+                    }, 300);
                 } else {
                     call.answer();
+                    appendSystemMessage(`📞 Voice call from ${remotePeerId.substring(0,6)} (auto-voice disabled)`, true);
                 }
+                
                 call.on('stream', (remoteStream) => {
-                    appendSystemMessage(`🎤 Voice connected: ${call.peer.substring(0,6)} is talking`);
+                    appendSystemMessage(`🎤 Voice connected: ${remotePeerId.substring(0,6)} is talking`, true);
                     audioEl.srcObject = remoteStream;
                     audioEl.play().catch(e => console.log('Audio play blocked'));
+                    
+                    if (!window.audioEnabled) {
+                        appendSystemMessage("🔊 Tap anywhere to enable audio output", true);
+                        const enableAudio = () => {
+                            audioEl.play().catch(console.log);
+                            document.body.removeEventListener('click', enableAudio);
+                            window.audioEnabled = true;
+                        };
+                        document.body.addEventListener('click', enableAudio, { once: true });
+                    }
                 });
-                voiceCalls.set(call.peer, { call, audioElement: audioEl });
+                
+                voiceCalls.set(remotePeerId, { call, audioElement: audioEl });
                 applyVoiceBitrate(call);
+                
                 call.on('close', () => {
-                    voiceCalls.delete(call.peer);
+                    voiceCalls.delete(remotePeerId);
                     if (audioEl) audioEl.srcObject = null;
+                    appendSystemMessage(`📞 Voice disconnected from ${remotePeerId.substring(0,6)}`, true);
                 });
             }
             
@@ -549,19 +632,16 @@
                     const conn = peer.connect(sessionId, { reliable: true });
                     clientConn = conn;
                     
-                    // Wait for auth challenge
                     conn.on('open', () => {
-                        // Send authentication with password
                         conn.send({ type: 'auth', password: password, username: myUsername, peerId: myPeerId });
                     });
                     
                     conn.on('data', handleClientData);
-                    
                     conn.on('close', () => {
                         isConnected = false;
                         stateDot.className = 'dot';
                         enableChat(false);
-                        appendSystemMessage("⚠️ Disconnected");
+                        appendSystemMessage("⚠️ Disconnected from room");
                     });
                 });
                 
@@ -585,10 +665,14 @@
                         enableChat(true);
                         appendSystemMessage(`✅ Authenticated! Connected to "${sessionId}" as ${myUsername}`);
                         updatePeerCountUI();
+                        
+                        // AUTO-START VOICE after successful connection
+                        setTimeout(() => {
+                            autoStartVoice();
+                        }, 500);
                     } else {
                         appendSystemMessage(`❌ Authentication failed: ${data.message || 'Wrong password'}`);
                         if (clientConn) clientConn.close();
-                        // Show password modal again
                         setTimeout(() => {
                             showPasswordModal((pwd) => startClientConnection(pwd));
                         }, 1000);
@@ -600,6 +684,7 @@
                 } else if (data.type === 'screenShareStart') {
                     if (data.sharerId && peer) {
                         const call = peer.call(data.sharerId, undefined, { metadata: { type: 'screen' } });
+                        screenCalls = screenCalls || [];
                         screenCalls.push(call);
                         call.answer();
                         call.on('stream', (stream) => {
@@ -630,6 +715,10 @@
                 roomPassword = password;
                 roomPasswordInfo.innerText = '🔒 Protected';
                 
+                // Get auto-voice setting from checkbox
+                autoVoiceEnabled = hostAutoVoiceToggle ? hostAutoVoiceToggle.checked : true;
+                updateAutoVoiceUI();
+                
                 isHost = true;
                 myUsername = usernameInput.value.trim() || 'Host';
                 preChatSection.classList.add('hidden');
@@ -647,39 +736,45 @@
                     myPeerIdInfo.innerText = id;
                     stateDot.className = 'dot active';
                     enableChat(true);
-                    appendSystemMessage(`🎤 Room hosted with password protection`);
+                    appendSystemMessage(`🎤 Room hosted with password protection`, true);
                     updatePeerCountUI();
+                    
+                    // AUTO-START VOICE for host
+                    setTimeout(() => {
+                        autoStartVoice();
+                    }, 500);
                 });
                 
                 peer.on('connection', (conn) => {
                     const remotePeerId = conn.peer;
                     
-                    // Store pending connection - wait for auth
                     const authHandler = (data) => {
                         if (data.type === 'auth') {
                             if (data.password === roomPassword) {
-                                // Authentication successful
                                 conn.send({ type: 'auth_result', success: true });
                                 conn.off('data', authHandler);
                                 
-                                // Now add to active connections
                                 hostConnections.set(remotePeerId, conn);
                                 updatePeerCountUI();
                                 appendSystemMessage(`👤 ${data.username || remotePeerId.substring(0,6)} joined (authenticated)`);
                                 
+                                // If host has voice active, auto-connect voice to new participant
+                                if (voiceActive && localAudioStream) {
+                                    setTimeout(() => {
+                                        const call = peer.call(remotePeerId, localAudioStream);
+                                        voiceCalls.set(remotePeerId, { call, audioElement: null });
+                                        applyVoiceBitrate(call);
+                                        appendSystemMessage(`🎙️ Auto-connected voice to ${remotePeerId.substring(0,6)}`, true);
+                                    }, 500);
+                                }
+                                
                                 conn.on('data', (data) => handleHostData(remotePeerId, data, data.username));
                                 conn.on('close', () => {
                                     hostConnections.delete(remotePeerId);
+                                    voiceCalls.delete(remotePeerId);
                                     updatePeerCountUI();
                                     appendSystemMessage(`👋 ${remotePeerId.substring(0,6)} left`);
                                 });
-                                
-                                // Send history to new client
-                                const history = [];
-                                receivedMsgIds.forEach(msgId => {
-                                    // Simplified history
-                                });
-                                if (history.length) conn.send({ type: 'history', messages: history });
                             } else {
                                 conn.send({ type: 'auth_result', success: false, message: 'Invalid password' });
                                 setTimeout(() => conn.close(), 500);
@@ -690,7 +785,6 @@
                     
                     conn.on('data', authHandler);
                     
-                    // Set timeout for auth
                     setTimeout(() => {
                         if (!hostConnections.has(remotePeerId)) {
                             conn.off('data', authHandler);
@@ -711,9 +805,7 @@
             }
             
             function handleHostData(peerId, data, username) {
-                if (data.type === 'setUsername') {
-                    // Already handled in auth
-                } else if (data.type === 'chat') {
+                if (data.type === 'chat') {
                     const msg = {
                         id: data.msgId || generateUUID(),
                         senderId: peerId,
@@ -742,10 +834,13 @@
                 }
             }
             
+            let localScreenStream = null;
+            let screenCalls = [];
+            
             async function startScreenShare() {
                 if (!peer) return;
                 try {
-                    if (localScreenStream) stopScreenShare(true);
+                    if (localScreenStream) stopScreenShare();
                     const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
                     localScreenStream = stream;
                     stopScreenShareBtn.style.display = 'inline-block';
@@ -831,6 +926,15 @@
                 }
             });
             
+            toggleAutoVoiceInfo?.addEventListener('click', () => {
+                autoVoiceEnabled = !autoVoiceEnabled;
+                updateAutoVoiceUI();
+                appendSystemMessage(autoVoiceEnabled ? "Auto-voice enabled" : "Auto-voice disabled", true);
+                if (autoVoiceEnabled && !voiceActive) {
+                    autoStartVoice();
+                }
+            });
+            
             screenShareBtn.addEventListener('click', () => { startScreenShare(); shareMenu.style.display = 'none'; });
             stopScreenShareBtn.addEventListener('click', () => stopScreenShare());
             fullscreenBtn.addEventListener('click', () => remoteScreenVideo.requestFullscreen?.());
@@ -852,13 +956,8 @@
                 }
             });
             
-            startVoiceCallBtn.addEventListener('click', startVoiceCall);
-            endVoiceCallBtn.addEventListener('click', endVoiceCall);
+            voiceToggleBtn.addEventListener('click', toggleVoiceManually);
             muteMicBtn.addEventListener('click', toggleMute);
-            voiceCallBtn.addEventListener('click', () => {
-                if (voiceActive) endVoiceCall();
-                else startVoiceCall();
-            });
             
             menuBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -891,7 +990,6 @@
                 myUsername = usernameInput.value.trim() || ('Guest_' + Math.random().toString(36).substring(2, 6));
                 usernameInput.value = myUsername;
                 topBarUsername.innerText = myUsername;
-                // Show password modal for client
                 showPasswordModal((pwd) => startClientConnection(pwd));
             } else {
                 preChatSection.classList.remove('hidden');
@@ -899,6 +997,8 @@
             }
             
             setInterval(() => updatePeerCountUI(), 1000);
+            updateVoiceUI();
+            updateAutoVoiceUI();
         })();
     </script>
 </body>
